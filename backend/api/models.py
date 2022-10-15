@@ -1,19 +1,17 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
-from django.contrib.auth.models import User, Group
+from django.contrib.auth.models import AbstractUser
 from algorithm.constants import *
 from .customs import IntegerListField, MonthAndYearField
 
 
-class User(User):
-    pass
+class User(AbstractUser):
+    is_head_doctor = models.BooleanField(blank=True, default=False)
+    # unit (Unit)
+    # doctors (Doctor)
 
     def __str__(self):
         return f'{self.username}'
-
-
-class Group(Group):
-    pass
 
 
 class Unit(models.Model):

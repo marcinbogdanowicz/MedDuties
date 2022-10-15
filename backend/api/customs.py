@@ -36,7 +36,7 @@ class IntegerListField(models.CharField):
 
 def validate_lenght(value):
     if len(value) != 2:
-        raise ValidationError('Too many elements given.')
+        raise ValidationError('Zbyt wiele elementów.')
 
 def validate_integers(value):
     forbidden_values = []
@@ -44,7 +44,7 @@ def validate_integers(value):
         if not isinstance(item, int):
             forbidden_values.append(item)
     if forbidden_values:
-        raise ValidationError(f'Items: {forbidden_values} are not integers')
+        raise ValidationError(f'Elementy: {forbidden_values} nie są liczbami całkowitymi.')
 
 def validate_positive(value):
     forbidden_values = []
@@ -52,18 +52,18 @@ def validate_positive(value):
         if item < 0:
             forbidden_values.append(item)
     if forbidden_values:
-        raise ValidationError(f'Items: {forbidden_values} are not positive')
+        raise ValidationError(f'Elementy: {forbidden_values} są ujemne.')
     
 def validate_month(value):
     month = value[0]
     if month not in range(1,13):
-        raise ValidationError(f'{month} is not a valid month number')
+        raise ValidationError(f'{month} nie jest numerem miesiąca.')
 
 def validate_year(value):
     year = value[1]
     digits = len(str(year))
     if digits != 4:
-        raise ValidationError(f'Year should have exactly 4 digits - {digits} given.')
+        raise ValidationError(f'Rok powienien mieć dokładnie 4 cyfry - podano {digits}.')
         
 def validate_monthyear(value):
     validate_lenght(value)
