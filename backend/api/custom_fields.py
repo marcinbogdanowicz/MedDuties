@@ -1,3 +1,4 @@
+import re
 from django.db import models
 from django.core.exceptions import ValidationError
 
@@ -44,7 +45,8 @@ def validate_integers(value):
         if not isinstance(item, int):
             forbidden_values.append(item)
     if forbidden_values:
-        raise ValidationError(f'Elementy: {forbidden_values} nie są liczbami całkowitymi.')
+        raise ValidationError(
+            f'Elementy: {forbidden_values} nie są liczbami całkowitymi.')
 
 def validate_positive(value):
     forbidden_values = []
@@ -66,6 +68,13 @@ def validate_year(value):
         raise ValidationError(f'Rok powienien mieć dokładnie 4 cyfry - podano {digits}.')
         
 def validate_monthyear(value):
+    if isinstance(value, str):
+        regex = re.compile('^[\[|\(]\d{1,2}\,\s{0,1}\d{4}[\]|\)]$')
+        match = regex.match(value)
+        if match:
+            value = re.findall('\d+', value)
+            value = list(map(int, value))
+
     validate_lenght(value)
     validate_integers(value)
     validate_positive(value)
@@ -83,7 +92,7 @@ class MonthAndYearField(models.CharField):
         kwargs['validators'] = [
             validate_monthyear
         ]
-        kwargs['max_length'] = 7
+        kwargs['max_length'] = 10
         super().__init__(*args, **kwargs)
 
     def deconstruct(self):
@@ -104,7 +113,19 @@ class MonthAndYearField(models.CharField):
         if isinstance(value, (tuple, list)):
             return value
 
+        if isinstance(value, str):
+            regex = re.compile('^[\[|\(]\d{1,2}\,\s{0,1}\d{4}[\]|\)]$')
+            match = regex.match(value)
+            if match:
+                value = re.findall('\d+', value)
+                value = list(map(int, value))
+                return value
+            return None
+
         if not value:
             return None
         
         return list(map(int, value.split(sep='/')))
+
+    
+

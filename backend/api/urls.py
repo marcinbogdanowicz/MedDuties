@@ -1,7 +1,21 @@
 from django.urls import path
 from rest_framework_simplejwt import views as jwt_views
-from .views import (ObtainTokenPairView, CreateUserView, 
-LogoutAndBlacklistRefreshTokenForUserView, UserDetailView)
+from .views import (
+    ObtainTokenPairView, 
+    CreateUserView, 
+    LogoutAndBlacklistRefreshTokenForUserView, 
+    UserDetailView,
+    UnitListView,
+    UnitDetailView,
+    DoctorListView,
+    DoctorDetailView,
+    MonthlyDutiesListView,
+    MonthlyDutiesDetailView,
+    DoctorMonthlyDataListView,
+    DoctorMonthlyDataDetailView,
+    DutyListView,
+    DutyDetailView
+)
 
 urlpatterns = [
     path('user/create/', 
@@ -14,18 +28,24 @@ urlpatterns = [
         jwt_views.TokenRefreshView.as_view(), name='token_refresh'),
     path('logout/', 
         LogoutAndBlacklistRefreshTokenForUserView.as_view(), name='blacklist'),
-
-    
+    path('unit/',
+        UnitListView.as_view(), name='unit-list'),
+    path('unit/<int:unit_pk>/',
+        UnitDetailView.as_view(), name='unit-detail'),
+    path('unit/<int:unit_pk>/doctors/',
+        DoctorListView.as_view(), name='doctor-list'),
+    path('unit/<int:unit_pk>/doctors/<int:doctor_pk>/',
+        DoctorDetailView.as_view(), name='doctor-detail'),
+    path('unit/<int:unit_pk>/duties/',
+        MonthlyDutiesListView.as_view(), name='monthly-duties-list'),
+    path('unit/<int:unit_pk>/duties/<int:year>/<int:month>/',
+        MonthlyDutiesDetailView.as_view(), name='monthly-duties-detail'),
+    path('unit/<int:unit_pk>/duties/<int:year>/<int:month>/settings/',
+        DoctorMonthlyDataListView.as_view(), name='doctor-monthly-data-list'),
+    path('unit/<int:unit_pk>/duties/<int:year>/<int:month>/settings/<int:doctor_monthly_data_pk>/',
+        DoctorMonthlyDataDetailView.as_view(), name='doctor-monthly-data-detail'),
+    path('unit/<int:unit_pk>/duties/<int:year>/<int:month>/duties/',
+        DutyListView.as_view(), name='duty-list'),
+    path('unit/<int:unit_pk>/duties/<int:year>/<int:month>/duties/<int:position>/<int:day>/',
+        DutyDetailView.as_view(), name='duty-detail'),
 ]
-
-
-"""
-Sending token to see the view:
-curl --header "Content-Type: application/json" \
---header "Authorization: JWT \
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXN
-zIiwiZXhwIjoxNjY1MjYwNjM1LCJpYXQiOjE2NjUyNjAzMzUsImp0aSI6IjAzYTB
-hMjk4MDk5YTQ2YjU5NjRiOGQ0ZDFiNDNjMjE3IiwidXNlcl9pZCI6MiwiZmF2X2N
-vbG9yIjoiIn0.n3zHmoGE34MnHzIJGENk9yeyY0siOfmekAIGwB7f52w" 
--X GET http://127.0.0.1:8000/api/hello/
-"""
