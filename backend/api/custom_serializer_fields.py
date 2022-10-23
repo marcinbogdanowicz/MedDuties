@@ -5,11 +5,11 @@ from rest_framework.reverse import reverse
 from .models import Unit
 
 
-class DoctorsListHyperlink(serializers.HyperlinkedRelatedField):
+class DoctorsListHyperlink(serializers.HyperlinkedIdentityField):
 
     def get_url(self, obj, view_name, request, format):
         url_kwargs = {
-            'unit_pk': obj.unit.pk,
+            'unit_pk': obj.pk,
         }
         return reverse(view_name, kwargs=url_kwargs, 
                        request=request, format=format)
@@ -101,4 +101,4 @@ class MonthAndYearField(serializers.Field):
                 data = list(map(int, data))
                 return data            
         raise serializers.ValidationError(
-            'Nieprawidłowy format danych. Oczekiwano: "12/2022"')
+            'Nieprawidłowy format danych. Oczekiwano: "MM/YYYY"')

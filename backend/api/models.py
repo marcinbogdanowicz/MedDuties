@@ -3,12 +3,19 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.contrib.auth.models import AbstractUser
 from algorithm.constants import *
 from .custom_fields import IntegerListField, MonthAndYearField
+from django.db.utils import IntegrityError
 
 
 class User(AbstractUser):
     is_head_doctor = models.BooleanField(blank=True, default=False)
-    unit = models.ForeignKey('Unit', on_delete=models.CASCADE, related_name='users')
-    # doctors (Doctor)
+    unit = models.ForeignKey('Unit', on_delete=models.CASCADE, 
+                             related_name='users', blank=True, null=True)
+    # owned_unit (Unit 1to1)
+    # owned_doctors (Doctor)
+    # my_doctor (Doctor 1to1)
+    # owned_doctors_monthly_data (DoctorMonthlyData)
+    # owned_monthly_duties (MonhtlyDuties)
+    # owned duties (Duty)
 
     def __str__(self):
         return f'{self.username}'
@@ -16,6 +23,10 @@ class User(AbstractUser):
 
 class Unit(models.Model):
     name = models.CharField(max_length=20)
+    duty_positions = models.PositiveIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(3)]) 
+    owner = models.OneToOneField('User', on_delete=models.CASCADE,
+                                 related_name='owned_unit')
     # doctors (Doctor)
     # monthly_duties (MonthlyDuties)
     # users (User)
@@ -28,7 +39,10 @@ class Doctor(models.Model):
     name = models.CharField(max_length=100)
     unit = models.ForeignKey(
         'Unit', on_delete=models.CASCADE, related_name='doctors')
-    owner = models.ManyToManyField('User', related_name='doctors')
+    impersonated_user = models.OneToOneField('User', related_name='my_doctor',
+                              on_delete=models.CASCADE, blank=True, null=True)
+    owner = models.ForeignKey('User', on_delete=models.CASCADE,
+                               related_name='owned_doctors')
     # monthly_data (DoctorsMonthlyData)
     # duties (Duty)
 
@@ -57,6 +71,8 @@ class DoctorMonthlyData(models.Model):
     preferred_weekdays = IntegerListField(max_length=60, default=[], blank=True)
     preferred_positions = IntegerListField(max_length=10, default=[], blank=True)
     locked = models.BooleanField(default=False, blank=True)
+    owner = models.ForeignKey('User', on_delete=models.CASCADE,
+                              related_name='owned_doctors_monthly_data')
 
     def __str__(self):
         return f'{self.doctor} for {self.monthly_duties}'
@@ -78,10 +94,10 @@ class MonthlyDuties(models.Model):
         validators=[MinValueValidator(0), MaxValueValidator(6)])
     duty_positions = models.PositiveIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(3)])
-    doctors = models.ManyToManyField(
-        'Doctor', through='DoctorMonthlyData')
     unit = models.ForeignKey(
         'Unit', on_delete=models.CASCADE, related_name='monthly_duties')
+    owner = models.ForeignKey('User', on_delete=models.CASCADE,
+                              related_name='owned_monthly_duties')
     # doctor_data (DoctorMonthlyData)
     # duties (Duty)
 
@@ -102,10 +118,12 @@ class Duty(models.Model):
         validators=[MinValueValidator(1), MaxValueValidator(31)])
     position = models.PositiveIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(3)])
-    person = models.ForeignKey(
+    doctor = models.ForeignKey(
         'Doctor', on_delete=models.CASCADE, related_name='duties')
     monthly_duties = models.ForeignKey(
         'MonthlyDuties', on_delete=models.CASCADE, related_name='duties')
+    owner = models.ForeignKey('User', on_delete=models.CASCADE,
+                              related_name='owned_duties')
 
     def __str__(self):
         return (f'{self.doctor} on {self.day}/' + 

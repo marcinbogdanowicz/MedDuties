@@ -3,6 +3,14 @@ from django.db import models
 from django.core.exceptions import ValidationError
 
 
+def integer_list_max_min_validator(value, min_value, max_value):
+
+    if any([item < min_value or item > max_value for item in value]):
+        raise ValidationError(
+            f"All items must be between {min_value}",
+            f"and {max_value}, inclusive.")
+
+
 class IntegerListField(models.CharField):
     """
     Stores integer list as space-separeted string.

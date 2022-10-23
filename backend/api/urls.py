@@ -1,7 +1,6 @@
 from django.urls import path
 from rest_framework_simplejwt import views as jwt_views
 from .views import (
-    ObtainTokenPairView, 
     CreateUserView, 
     LogoutAndBlacklistRefreshTokenForUserView, 
     UserDetailView,
@@ -23,7 +22,7 @@ urlpatterns = [
     path('user/<int:pk>/',
         UserDetailView.as_view(), name='user-detail'),
     path('token/obtain/', 
-        ObtainTokenPairView.as_view(), name='token_create'),
+        jwt_views.TokenObtainPairView.as_view(), name='token_create'),
     path('token/refresh/', 
         jwt_views.TokenRefreshView.as_view(), name='token_refresh'),
     path('logout/', 
@@ -44,8 +43,17 @@ urlpatterns = [
         DoctorMonthlyDataListView.as_view(), name='doctor-monthly-data-list'),
     path('unit/<int:unit_pk>/duties/<int:year>/<int:month>/settings/<int:doctor_monthly_data_pk>/',
         DoctorMonthlyDataDetailView.as_view(), name='doctor-monthly-data-detail'),
-    path('unit/<int:unit_pk>/duties/<int:year>/<int:month>/duties/',
+    path('unit/<int:unit_pk>/duties/<int:year>/<int:month>/duty/',
         DutyListView.as_view(), name='duty-list'),
-    path('unit/<int:unit_pk>/duties/<int:year>/<int:month>/duties/<int:position>/<int:day>/',
+    path('unit/<int:unit_pk>/duties/<int:year>/<int:month>/duty/<int:position>/<int:day>/',
         DutyDetailView.as_view(), name='duty-detail'),
 ]
+
+"""
+TODO:
+1. Make sure doctors, duties, monthly duties and doctor monthly data are available
+only through url beginning with unit they belong to.
+2. Add authorization:
+    - unit head can modify all models that belong to that unit
+    - doctor owner can modify his monthly data
+"""
