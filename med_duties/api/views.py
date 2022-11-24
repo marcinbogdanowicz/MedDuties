@@ -1,5 +1,7 @@
 from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext as _
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import permissions, status, exceptions
 from rest_framework.views import APIView
@@ -10,11 +12,11 @@ from rest_framework.generics import (
 )
 from rest_framework.response import Response
 from .serializers import (
-    CreateUserSerializer, 
     UserSerializer,
     UnitSerializer,
     DoctorSerializer,
     MonthlyDutiesSerializer,
+    MonthlyDutiesListSerializer,
     DoctorMonthlyDataSerializer,
     DutySerializer
 )
@@ -29,12 +31,17 @@ from .models import (
 from . import custom_permissions
 
 
+class ObtainTokenPairView(TokenObtainPairView):
+    permission_classes = (permissions.AllowAny,)
+    serializer_class = TokenObtainPairSerializer
+
+
 class CreateUserView(APIView):
     permission_classes = (permissions.AllowAny,)
     authentication_classes = ()
 
     def post(self, request, format='json'):
-        serializer = CreateUserSerializer(data=request.data)
+        serializer = UserSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             user = serializer.save()
             if user:
@@ -133,7 +140,11 @@ class MonthlyDutiesListView(ListCreateAPIView):
     Returns all unit's monthly duties objects.
     Accessible only by unit members.
     """
-    serializer_class = MonthlyDutiesSerializer
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return MonthlyDutiesSerializer
+        elif self.request.method == "GET":
+            return MonthlyDutiesListSerializer
 
     def get_queryset(self):
         if self.request.user.unit is not None:

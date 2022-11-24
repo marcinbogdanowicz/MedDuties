@@ -1,0 +1,195 @@
+import React from 'react';
+import Form from 'react-bootstrap/Form';
+import Button from 'react-bootstrap/Button';
+import { Link, useNavigate } from 'react-router-dom';
+import axiosInstance from '../axiosApi';
+import logUserIn from './logUserIn';
+import Alert from './Alert';
+import MenuRow from './MenuRow';
+
+
+export default function Register() {
+    const navigate = useNavigate();
+
+    const [registerData, setRegisterData] = React.useState({
+        username: "",
+        password: "",
+        passwordRepeat: "",
+        email: "",
+        unitName: "",
+        dutyPositions: "",
+    });
+
+    const [errors, setErrors] = React.useState({});
+
+    const inputHandler = (event) => {
+        const { name, value } = event.target;
+        setRegisterData((prevState) => ({
+            ...prevState,
+            [name]: value,
+        }));
+    }
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        
+        // Check for invalid form fields.
+        const newErrors = {};
+        if (registerData.password.length === 0) {
+            newErrors.password = "Proszę podać hasło."
+        } else if (registerData.password !== registerData.passwordRepeat) {
+            newErrors.password = "Hasła muszą się zgadzać!";
+        }
+        if (registerData.username.length === 0) {
+            newErrors.username = "Proszę podać nazwę użytkownika.";
+        }
+        if (registerData.email.length === 0) {
+            newErrors.email = "Proszę podać adres e-mail.";
+        }
+        if (registerData.unitName.length === 0) {
+            newErrors.unitName = "Proszę podać nazwę oddziału.";
+        }
+        const acceptedDutyPositions = [1,2,3];
+        if (registerData.dutyPositions === '') {
+            newErrors.dutyPositions = "Proszę podać liczbę lekarzy na dyżur.";
+        } else if (!(registerData.dutyPositions in acceptedDutyPositions)) {
+            newErrors.dutyPositions = "Obługiwany grafik dla 1 do 3 lekarzy na dyżur.";
+        }
+
+        // Prevent sending if form is filled incorrectly.
+        if (Object.keys(newErrors).length != 0) {
+            setErrors(newErrors);
+            return;
+        }
+
+        // Proceed form.
+        try {
+            // Create user instance along with his unit instance.
+            const response = await axiosInstance.post('/user/create/', {
+                username: registerData.username,
+                password: registerData.password,
+                email: registerData.email,
+                is_head_doctor: true,
+                unit: {
+                    name: registerData.unitName,
+                    duty_positions: registerData.dutyPositions
+                }
+            });            
+
+            // Log user in and redirect to menu.
+            await logUserIn(registerData.username, registerData.password);
+            navigate('/menu/');
+
+        } catch (error) {
+            // Sort errors to correct state values to be displayed under fields.
+            const newErrors = {...errors};
+            if ('response' in error && 'data' in error.response) {
+                for (const [key, value] of Object.entries(error.response.data)) {
+                    newErrors[key] = value[0];
+                }
+                setErrors(newErrors);
+            } else {
+            // Other errors should be displayed in alert as 'general' error.
+                setErrors((prevState) => ({
+                    ...prevState,
+                    general: 'Wystąpił błąd.'
+                }))
+                console.log(error);
+            }
+        }
+    }
+
+    return (
+        <MenuRow addedClass="bg-warning">
+
+            <Form onSubmit={handleSubmit}>
+
+                <h2 className="mb-5">Rejestracja</h2>
+                
+                <Form.Label>Dane użytkownika</Form.Label>
+
+                <Form.Group className="mb-3">
+                    <Form.Control type="text" name="username"
+                        placeholder="Login" value={registerData.username}
+                        onChange={inputHandler} />
+                    {
+                        errors.username && 
+                            <Form.Text className="text-danger">
+                                {errors.username}
+                            </Form.Text>
+                    }
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                    <Form.Control type="email" name="email"
+                        placeholder="E-mail" value={registerData.email}
+                        onChange={inputHandler} />
+                    {
+                        errors.email && 
+                            <Form.Text className="text-danger">
+                                {errors.email}
+                            </Form.Text>
+                    }
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                    <Form.Control type="password" name="password"
+                        placeholder="Hasło" value={registerData.password}
+                        onChange={inputHandler} />
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                    <Form.Control type="password" name="passwordRepeat"
+                        placeholder="Hasło (powtórz)" value={registerData.passwordRepeat}
+                        onChange={inputHandler} />
+                    {
+                        registerData.password !== registerData.passwordRepeat && 
+                            <Form.Text className="text-danger">
+                                Hasła muszą się zgadzać!
+                            </Form.Text>
+                    }
+                    {
+                        errors.password && 
+                            <Form.Text className="text-danger">
+                                {errors.password}
+                            </Form.Text>
+                    }
+                </Form.Group>
+
+                <Form.Label>Dane oddziału</Form.Label>
+
+                <Form.Group className="mb-3">
+                    <Form.Control type="text" name="unitName"
+                        placeholder="Nazwa" value={registerData.unitName}
+                        onChange={inputHandler} />
+                    {
+                        errors.unitName && 
+                            <Form.Text className="text-danger">
+                                {errors.unitName}
+                            </Form.Text>
+                    }
+                </Form.Group>
+
+                <Form.Group className="mb-3">
+                    <Form.Control type="text" name="dutyPositions"
+                        placeholder="Liczba lekarzy na dyżur"
+                        value={registerData.dutyPositions} onChange={inputHandler} />
+                    {
+                        errors.dutyPositions && 
+                            <Form.Text className="text-danger">
+                                {errors.dutyPositions}
+                            </Form.Text>
+                    }
+                </Form.Group>
+
+                <Button className="mb-3" variant="primary" type="submit">Zarejestruj się</Button>
+
+                <p>Masz już konto? <Link to="/login/">Zaloguj się</Link>.</p>
+                
+            </Form>
+            { 
+                errors.general && <Alert>{errors.general}</Alert>
+            }
+        </MenuRow>
+    );
+}

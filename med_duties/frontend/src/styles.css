@@ -1,0 +1,82 @@
+.block-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.block-link:hover {
+    opacity: 0.8;
+    color: inherit;
+    text-decoration: none;
+}
+
+.tile {
+    width: 15vw;
+    height: 12vw;
+}
+
+.logo {
+    z-index: 1100;
+}
+
+.logo-size {
+    min-height: 150px;
+    height: 25vh;
+    width: 25vw;
+}
+
+.col-scrollable {
+    min-height: 100vh;
+    max-height: 100vh;
+    overflow-y: scroll;
+}
+
+.duty-view {
+    height: 88vh;
+    max-height: 88vh;
+    overflow-y: scroll;
+}
+
+.duty-menu {
+    height: 12vh;
+}
+
+.duty-tile {
+    height: 12vh;
+    min-height: 65px;
+    background-color: brown;
+    overflow: hidden;
+}
+
+.duty-tile-highlight {
+    height: 12vh;
+    min-height: 65px;
+    background-color: rgb(193, 99, 99);
+    overflow: hidden;
+}
+
+.log {
+    position: fixed;
+    bottom: 12vh;
+    padding: 2em;
+    padding-top: 1em;
+    height: 40vh;
+    width: 75vw;
+    background-color: white;
+}
+
+.log-content {
+    height: 80%;
+    width: 100%;
+    background-color: rgb(247, 247, 247);
+    font-family: monospace;
+    padding: 1em;
+    overflow-y: scroll;
+}
+
+.log-content li {
+    list-style-type: "» ";
+}
+
+.hide {
+    display: none !important;
+}

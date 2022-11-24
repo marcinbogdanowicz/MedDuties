@@ -440,7 +440,6 @@ class MonthlyDuties():
             doctors.sort(key=by_number_of_preferred_positions)
             doctors.sort(key=by_number_of_preferred_weekdays)
 
-            
             for doctor in doctors:
                 evaluation_chart = doctor.evaluate_duties(self, position)
 
@@ -505,7 +504,7 @@ class MonthlyDuties():
 
                 if i_have_duty_on_excluded_day:
                     errors += (f"Error: {doctor.get_name()} "+
-                    f'has duty on excluded day: {dates[i]+1}\n')
+                    f'has duty on excluded day: {dates[i]}\n')
         
         if errors:
             raise Exception(errors)
@@ -608,7 +607,7 @@ class MonthlyDuties():
 
                     doctor.set_preferred_positions(
                         self.year, self.month, new_positions)
-                
+
                     if not changes:
                         changes.append('Could not establish duties.\n')
                     changes += [f'Adding position {new_position} ' +
@@ -678,7 +677,6 @@ class MonthlyDuties():
         print()
 
     def print_statistics(self):
-        # TODO: post-assignment statistics assessment should be implemented.
         doctors = self.doctors
         strains = []
         averages = []
@@ -840,7 +838,7 @@ class Doctor():
                 evaluation_chart.modify_points(today, MODIFIER_DUTY_IMPOSSIBLE)
 
             if i_am_on_duty_on_any_position:
-                # Denote decreasing impact on following and preceding day.
+                # Mark decreasing impact on following and preceding day.
                 # Prevent double duties.
                 evaluation_chart.modify_points(today - 4, MODIFIER_FOUR_DAYS_APART)
                 evaluation_chart.modify_points(today - 3, MODIFIER_THREE_DAYS_APART)
@@ -878,7 +876,7 @@ class Doctor():
                 evaluation_chart.modify_points(today + 1, MODIFIER_SATURDAY_IF_ONE_WEEKEND)
 
             if not it_is_weekend and i_dont_have_duties_on_two_weekends_yet:
-                # Support the team, take at least two duties!
+                # Support the team, take at least two weekends!
                 evaluation_chart.modify_points(today, MODIFIER_LESS_THAN_TWO_WEEKENDS)
 
         #evaluation_chart.print_values("all", position) # TESTING ONLY choice/all

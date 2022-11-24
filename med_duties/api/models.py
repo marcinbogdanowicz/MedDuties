@@ -118,6 +118,7 @@ class Duty(models.Model):
         validators=[MinValueValidator(1), MaxValueValidator(31)])
     position = models.PositiveIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(3)])
+    strain_points = models.PositiveIntegerField()
     doctor = models.ForeignKey(
         'Doctor', on_delete=models.CASCADE, related_name='duties')
     monthly_duties = models.ForeignKey(

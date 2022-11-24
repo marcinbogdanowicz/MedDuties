@@ -1,0 +1,37 @@
+{
+  "name": "med-duties-app",
+  "version": "1.0.0",
+  "description": "MedDuties App",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack --config webpack.config.js && python3 med_duties/manage.py runserver",
+    "test": "jest --verbose"
+  },
+  "author": "MB",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/core": "^7.19.6",
+    "@babel/preset-env": "^7.19.4",
+    "@babel/preset-react": "^7.18.6",
+    "babel-loader": "^8.2.5",
+    "babel-polyfill": "^6.26.0",
+    "css-loader": "^6.7.1",
+    "esm": "^3.2.25",
+    "fs": "^0.0.1-security",
+    "jest": "^29.3.1",
+    "less-loader": "^11.1.0",
+    "selenium-webdriver": "^4.6.1",
+    "style-loader": "^3.3.1",
+    "webpack": "^5.74.0",
+    "webpack-cli": "^4.10.0"
+  },
+  "dependencies": {
+    "axios": "^1.1.3",
+    "bootstrap": "^5.2.2",
+    "js-combinatorics": "^2.1.1",
+    "react": "^18.2.0",
+    "react-bootstrap": "^2.5.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.4.2"
+  }
+}

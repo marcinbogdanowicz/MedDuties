@@ -5,25 +5,6 @@ from .models import User, Unit, Doctor, MonthlyDuties, DoctorMonthlyData, Duty
 from . import custom_serializer_fields
 
 
-class CreateUserSerializer(serializers.ModelSerializer):
-
-    password = serializers.CharField(min_length=8, write_only=True)
-
-    class Meta:
-        model = User
-        fields = ('pk', 'username', 'password', 'is_head_doctor', 'unit')
-        extra_kwargs = {'password': {'write_only': True}}
-
-    def create(self, validated_data):
-        password = validated_data.pop('password', None)
-        user = self.Meta.model(**validated_data)
-        if password is not None:
-            user.set_password(password)
-        user.save()
-
-        return user
-
-
 class UnitSerializer(serializers.ModelSerializer):
     
     monthly_duties = custom_serializer_fields.MonthlyDutiesListHyperlink(
@@ -46,12 +27,31 @@ class UnitSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
 
     password = serializers.CharField(min_length=8, write_only=True)
+    unit = UnitSerializer(required=False)
     
     class Meta:
         model = User
         fields = ('pk', 'username', 'password', 'is_head_doctor',
-                  'unit', 'owned_doctors', 'my_doctor')
-        extra_kwargs = {'password': {'write_only': True}}
+                  'unit', 'my_doctor')
+        extra_kwargs = {'my_doctor': {'read_only': True}}
+
+    def create(self, validated_data):
+        unit_data = validated_data.pop('unit', None)
+
+        password = validated_data.pop('password', None)
+        user = User.objects.create(**validated_data)
+        if password is not None:
+            user.set_password(password)
+        user.save()
+        
+        unit = Unit.objects.create(owner=user, **unit_data)
+        unit.full_clean()
+        unit.save()
+
+        user.unit = unit
+        user.save()
+
+        return user
 
     def update(self, instance, validated_data):
         request = self.context['request']
@@ -59,7 +59,7 @@ class UserSerializer(serializers.ModelSerializer):
                 and validated_data.get('unit', False)
                 and instance.unit is not None):
             raise exceptions.PermissionDenied(
-                "User's unit cannot be changed after assignment.")
+                "User's unit cannot be changed after assignment.")        
 
         return super().update(instance, validated_data)
 
@@ -171,7 +171,7 @@ class DutySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Duty
-        fields = ('pk', 'day', 'position', 'doctor', 'monthly_duties')
+        fields = ('pk', 'day', 'position', 'strain_points', 'doctor', 'monthly_duties')
 
     def create(self, validated_data):
         # Set user as owner during creation.
@@ -213,7 +213,7 @@ class DutyNestedSerializer(DutySerializer):
 
     class Meta:
         model = Duty
-        fields = ('pk', 'day', 'position', 'doctor', 'monthly_duties', 'owner')
+        fields = ('pk', 'day', 'position', 'doctor', 'strain_points', 'monthly_duties', 'owner')
         extra_kwargs = {
             'pk': {'read_only': False, 'required': False},
             'owner': {'write_only': True, 'required': False},
@@ -426,4 +426,11 @@ class MonthlyDutiesSerializer(serializers.ModelSerializer):
                     ("Only head doctors can create or modify "+
                     "new duty schedules."))
         
-        return validated_data      
+        return validated_data
+
+
+class MonthlyDutiesListSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = MonthlyDuties
+        fields = ('pk', 'monthandyear',)
