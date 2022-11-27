@@ -1,5 +1,5 @@
 
-export function range (start, end=null, step=1) {
+export function range(start, end=null, step=1) {
     var rangeStart = start;
     var rangeEnd = end;
     const arr = [];
@@ -174,4 +174,38 @@ export function areEqual(iterable1, iterable2) {
         return true;
     }
     return false;
+}
+
+export function getDiff(iterable1, iterable2) {
+    /* Suitable only for comparing array (set) 
+    with its subarray (subset) */
+    const array1 = Array.of(...iterable1);
+    const array2 = Array.of(...iterable2);
+
+    var larger;
+    var smaller;
+    if (array1.length > array2.length) {
+        larger = array1;
+        smaller = array2;
+    } else if (array2.length > array1.length) {
+        larger = array2;
+        smaller = array1;
+    } else {
+        return [];
+    }
+
+    const diff = larger.filter(item => {
+        return !smaller.includes(item);
+    });
+
+    return diff;
+}
+
+export function getKeyByValue(map, value) {
+    for (const [k, v] of map.entries()) {
+        if (v === value) {
+            return k;
+        }
+    }
+    return null;
 }

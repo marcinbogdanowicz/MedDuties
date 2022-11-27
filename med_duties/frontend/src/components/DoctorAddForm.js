@@ -15,10 +15,15 @@ export default function DoctorAddForm(props) {
     }
     return (
         <div>
+            <h6>Nowy lekarz</h6>
             <Form onSubmit={handleSubmit} >
-                <Form.Label>Imię</Form.Label>
-                <Form.Control type="text" name="name" value={name} onChange={handleChange}/>
-                <button type="submit" className="btn btn-primary">Dodaj</button>
+                <Form.Group className="mb-4">
+                    <Form.Label>Imię</Form.Label>
+                    <Form.Control type="text" name="name" value={name} onChange={handleChange}/>
+                </Form.Group>
+                <Form.Group>
+                    <button type="submit" className="btn btn-primary">Dodaj</button>
+                </Form.Group>
             </Form>
         </div>
     );

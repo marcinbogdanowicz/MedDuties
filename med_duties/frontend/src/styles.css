@@ -1,3 +1,10 @@
+:root {
+    --schedule-color-primary: brown;
+    --schedule-color-primary-select: rgb(193, 99, 99);
+    --schedule-color-light: rgb(240, 240, 240);
+    --schedule-color-dimlight: rgb(225, 225, 225);
+}
+
 .block-link {
     color: inherit;
     text-decoration: none;
@@ -15,19 +22,25 @@
 }
 
 .logo {
-    z-index: 1100;
-}
-
-.logo-size {
-    min-height: 150px;
-    height: 25vh;
+    height: 20vh;
     width: 25vw;
+    background-color: var(--schedule-color-primary);
 }
 
-.col-scrollable {
+.left-col {
+    min-height: 80vh;
+    max-height: 80vh;
+    overflow-y: scroll;
+    padding: 0;
+    margin: 0;
+}
+
+.right-col {
     min-height: 100vh;
     max-height: 100vh;
     overflow-y: scroll;
+    padding: 0;
+    margin: 0;
 }
 
 .duty-view {
@@ -40,36 +53,132 @@
     height: 12vh;
 }
 
+.duty-calendar-tile {
+    height: 3rem;
+    padding: 0.5rem;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.duty-calendar-tile.weekend {
+    color: var(--schedule-color-light);
+    background-color: var(--schedule-color-primary);
+}
+
+.duty-calendar-tile.weekday {
+    color: var(--schedule-color-primary);
+    background-color: var(--schedule-color-light);
+}
+
+.duty-calendar-tile-day {
+    font-size: 2rem;
+    font-weight: 600;
+    margin: 0;
+    padding: 0;
+    line-height: 1;
+}
+
+.duty-calendar-tile-weekday {
+    font-size: 1rem;
+    font-weight: 400;
+    margin: 0;
+    padding: 0;
+    line-height: 1;
+}
+
 .duty-tile {
-    height: 12vh;
-    min-height: 65px;
-    background-color: brown;
+    height: 3rem;
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
-.duty-tile-highlight {
-    height: 12vh;
-    min-height: 65px;
-    background-color: rgb(193, 99, 99);
-    overflow: hidden;
+.duty-tile.normal {
+    background-color: var(--schedule-color-primary);
 }
 
-.log {
+.duty-tile.highlight {
+    background-color: var(--schedule-color-primary-select);
+}
+
+.duty-tile-on-duty {
+    font-size: 1.25rem;
+    color: var(--schedule-color-light);
+}
+
+.duty-tile-off-duty {
+    font-size: 0.75rem;
+    color: var(--schedule-color-dimlight);
+    font-style: italic;
+}
+
+.duty-tile-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.duty-tile-control {
+    height: 1.5rem;
+    width: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+}
+
+.duty-tile-control.position {
+    background-color: var(--schedule-color-dimlight);
+    color: var(--schedule-color-primary);
+    font-weight: 600;
+    margin: 0.3rem;
+}
+
+.duty-tile-control.control {
+    color: var(--schedule-color-dimlight);
+    font-size: 1.25rem;
+}
+
+.duty-tile-control.control:hover {
+    font-size: 1.75rem;
+    color: var(--schedule-color-primary);
+    background-color: var(--schedule-color-dimlight);
+}
+
+.duty-tile.weekend {
+    color: var(--schedule-color-light) !important;
+    background-color: var(--schedule-color-primary) !important;
+}
+
+.my-offcanvas {
     position: fixed;
     bottom: 12vh;
-    padding: 2em;
     padding-top: 1em;
+    padding-bottom: 1em;
+    padding-left: 2em;
+    padding-right: 2em;
     height: 40vh;
     width: 75vw;
-    background-color: white;
+    background-color: var(--schedule-color-light);
 }
 
 .log-content {
     height: 80%;
     width: 100%;
-    background-color: rgb(247, 247, 247);
+    background-color: var(--schedule-color-dimlight);
     font-family: monospace;
-    padding: 1em;
+    font-size: 15px;
+    line-height: 140%;
+    padding: 0.7em;
     overflow-y: scroll;
 }
 
@@ -77,6 +186,48 @@
     list-style-type: "» ";
 }
 
+.statistics-content {
+    height: 80%;
+    width: 100%;
+    overflow-y: scroll;
+}
+
+.stat-table thead {
+    position: sticky;
+    top: 0;
+    background-color: var(--schedule-color-light);
+}
+
+.stat-table thead th {
+    cursor: pointer;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.link {
+    color: #0d6efd;
+    cursor: pointer;
+}
+
+.link:hover {
+    color: #5498ff
+}
+
 .hide {
     display: none !important;
+}
+
+.pointer {
+    cursor: pointer;
+}
+
+.alert-custom {
+    width: 40vw;
+}
+
+.no-select {
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }

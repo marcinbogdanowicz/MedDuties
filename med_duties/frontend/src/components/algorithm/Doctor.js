@@ -1,4 +1,4 @@
-import { range, getNumberOfWeekdaysInMonth } from './utils';
+import { range, getNumberOfWeekdaysInMonth, getDiff } from './utils';
 import EvaluationChart from './EvaluationChart';
 
 
@@ -25,6 +25,8 @@ var MODIFIER_LESS_THAN_TWO_WEEKENDS = 50;
 var MODIFIER_DONT_STEAL_SUNDAYS = 100;
 var MODIFIER_THURSDAY_IS_ORDINARY = 10;
 var MODIFIER_SATURDAY_IF_ONE_WEEKEND = -30;
+
+var MODIFIER_EACH_WEEKEND = 40;
 
 export var modifiers = {
     DUTY_IMPOSSIBLE: MODIFIER_DUTY_IMPOSSIBLE,
@@ -96,6 +98,7 @@ class Doctor {
         this.getName = this.getName.bind(this);
         this.evaluateDuties = this.evaluateDuties.bind(this);
         this.setDuty = this.setDuty.bind(this);
+        this.removeDuty = this.removeDuty.bind(this);
         this.getDuties = this.getDuties.bind(this);
         this.getNumberOfDuties = this.getNumberOfDuties.bind(this);
         this.getWeekendsOnDuty = this.getWeekendsOnDuty.bind(this);
@@ -118,6 +121,13 @@ class Doctor {
         this.lockPreferences = this.lockPreferences.bind(this);
         this.isLocked = this.isLocked.bind(this);
         this.restoreInit = this.restoreInit.bind(this);
+        this.restoreMaxDuties = this.restoreMaxDuties.bind(this);
+        this.restoreExceptions = this.restoreExceptions.bind(this);
+        this.restorePreferredDays = this.restorePreferredDays.bind(this);
+        this.restorePreferredPositions = this.restorePreferredPositions.bind(this);
+        this.restorePreferredWeekdays = this.restorePreferredWeekdays.bind(this);
+        this.getChangedSettings = this.getChangedSettings.bind(this);
+        this.getStatistics = this.getStatistics.bind(this);
     }
 
     setPk(pk) {
@@ -188,9 +198,8 @@ class Doctor {
             const iAmNotOnDutyTwoDaysAgo = !(Object.values(month.whoIsOnDuty(today - 2)).some(entry => {
                 if (entry !== null) {
                     return entry.pk === this.pk;
-                } else {
-                    return false;
                 }
+                return false;
             }));
             
             if (dutyImpossible) {
@@ -271,6 +280,15 @@ class Doctor {
         this.duties.push(duty);
     }
 
+    removeDuty(duty) {
+        const dutyToRemove = this.duties.find(d => {
+            const sameDay = d.getDay().number === duty.getDay().number;
+            const samePos = d.getPosition() === duty.getPosition();
+            return (sameDay && samePos);
+        });
+        this.duties = this.duties.filter(d => d !== dutyToRemove);
+    }
+
     getDuties() {
         return this.duties;
     }
@@ -327,6 +345,7 @@ class Doctor {
     }
 
     setExceptions(exceptionList, saveInit=false) {
+        exceptionList.sort();
         if (saveInit) {
             this.#exceptionsInit = exceptionList;
         }
@@ -338,6 +357,7 @@ class Doctor {
     }
 
     setPreferredDays(daysList, saveInit=false) {
+        daysList.sort();
         if (saveInit) {
             this.#preferredDaysInit = daysList;
         }
@@ -349,6 +369,7 @@ class Doctor {
     }
 
     setPreferredWeekdays(weekdaysList, saveInit=false) {
+        weekdaysList.sort();
         if (saveInit) {
             this.#preferredWeekdaysInit = weekdaysList;
         }
@@ -380,6 +401,7 @@ class Doctor {
     }
 
     setPreferredPositions(positionList,saveInit=false) {
+        positionList.sort();
         if (saveInit) {
             this.#preferredPositionsInit = positionList;
         }
@@ -399,11 +421,131 @@ class Doctor {
     }
 
     restoreInit() {
+        this.restoreMaxDuties();
+        this.restoreExceptions();
+        this.restorePreferredDays();
+        this.restorePreferredPositions();
+        this.restorePreferredWeekdays();
+    }
+
+    restoreMaxDuties() {
         this.maxNumberOfDuties = this.#maxNumberOfDutiesInit;
+    }
+
+    restoreExceptions() {
         this.exceptions = [...this.#exceptionsInit];
+    }
+
+    restorePreferredDays() {
         this.preferredDays = [...this.#preferredDaysInit];
+    }
+
+    restorePreferredPositions() {
         this.preferredPositions = [...this.#preferredPositionsInit];
+    }
+
+    restorePreferredWeekdays() {
         this.preferredWeekdays = [...this.#preferredWeekdaysInit];
+    }
+
+    getChangedSettings() {
+        const changes = {};
+
+        const maxDutiesDiff = this.maxNumberOfDuties - this.#maxNumberOfDutiesInit;
+        if (maxDutiesDiff) {
+            changes.maxNumberOfDuties = maxDutiesDiff;
+        }
+
+        const exceptionsDiff = getDiff(this.exceptions, this.#exceptionsInit);
+        if (exceptionsDiff.length > 0) {
+            changes.exceptions = exceptionsDiff;
+        }
+
+        const preferredDaysDiff = getDiff(this.preferredDays, this.#preferredDaysInit);
+        if (preferredDaysDiff.length > 0) {
+            changes.preferredDays = preferredDaysDiff;
+        }
+
+        const preferredPositionsDiff = getDiff(this.preferredPositions, this.#preferredPositionsInit);
+        if (preferredPositionsDiff.length > 0) {
+            changes.preferredPositions = preferredPositionsDiff;
+        }
+
+        const preferredWeekdaysDiff = getDiff(this.preferredWeekdays, this.#preferredWeekdaysInit);
+        if (preferredWeekdaysDiff.length > 0) {
+            changes.preferredWeekdays = preferredWeekdaysDiff;
+        }
+
+        return changes;
+    }
+
+    getStatistics() {
+        const byDate = (dutyA, dutyB) => dutyA.getDay().number - dutyB.getDay().number;
+        const myDuties = this.duties.sort(byDate);
+        const myDutysDates = this.duties.map(duty => duty.getDay().number);
+
+        const statistics = {
+            name: this.name,
+            duties: myDuties.length,
+            strain: 0,
+            weekends: new Set(),
+            weekendDays: 0,
+            holidays: 0,
+            0: 0,
+            1: 0,
+            2: 0,
+            3: 0,
+            4: 0,
+            5: 0,
+            6: 0,
+        };
+
+        myDuties.forEach((duty, i) => {
+            const today = myDutysDates[i];
+            const day = duty.getDay();
+
+            // Compute strain.
+            statistics.strain += day.strainPoints;
+            const modifier = {
+                2: MODIFIER_TWO_DAYS_APART,
+                3: MODIFIER_THREE_DAYS_APART,
+                4: MODIFIER_FOUR_DAYS_APART
+            };
+            range(2,5).forEach(number => {
+                if (myDutysDates.includes(today+number)) {
+                    statistics.strain += modifier[number];
+                }
+            });
+            const iDontTakeDutiesOnWeekends = !(
+                (5 in this.preferredWeekdays) || (6 in this.preferredWeekdays));
+            if (iDontTakeDutiesOnWeekends && day.weekday === 3) {
+                statistics.strain += MODIFIER_THURSDAY_IS_ORDINARY;
+            }
+
+            // Count weekdays.
+            statistics[day.weekday]++;
+
+            // Count weekends and weekend days
+            const itIsWeekend = day.category === 'weekend';
+            if (itIsWeekend) {
+                statistics.weekends.add(day.week);
+                statistics.weekendDays++;
+            }
+
+            // Count holidays.
+            const itIsHoliday = day.category === 'holiday';
+            if (itIsHoliday) {
+                statistics.holidays++;
+            }
+        });
+
+        // Count weekends
+        statistics.weekends = statistics.weekends.size;
+
+        // Add strain for each weekend.
+        statistics.strain += statistics.weekends * MODIFIER_EACH_WEEKEND;
+
+        return statistics;
     }
 }
 

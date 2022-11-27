@@ -7,7 +7,7 @@ var thursday = 70;
 var friday = 90;
 var saturday = 110;
 var sunday = 100;
-var holiday = 300;
+var holiday = 140;
 
 
 class Day {

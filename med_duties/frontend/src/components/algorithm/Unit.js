@@ -8,10 +8,15 @@ class Unit {
         this.dutyPositions = range(1, dutyPositions+1);
 
         this.addDoctors = this.addDoctors.bind(this);
+        this.removeDoctor = this.removeDoctor.bind(this);
     }
 
     addDoctors(doctorsList) {
         this.doctors = this.doctors.concat(doctorsList);
+    }
+
+    removeDoctor(pk) {
+        this.doctors = this.doctors.filter(doctor => !(doctor.pk === pk));
     }
 }
 

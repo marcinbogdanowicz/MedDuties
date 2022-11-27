@@ -9,6 +9,7 @@ export default function DoctorForm(props) {
     const year = props.year;
     const month = props.month;
     const updateDoctor = props.updateDoctor;
+    const removeDoctor = props.removeDoctor;
     const daysInMonth = new Date(year, month, 0).getDate();
 
     const [messages, setMessages] = useState({});
@@ -158,6 +159,11 @@ export default function DoctorForm(props) {
         }
     }
 
+    const removeHandler = (e) => {
+        e.preventDefault();
+        removeDoctor(doctor.pk);
+    }
+
     const positionChecks = doctorData.preferredPositions.map((position, index) => {
         return <Form.Check inline type="checkbox" name={`position-${index+1}`} label={`${index+1}`} id={`position-${index+1}-doc-${doctor.pk}`} key={`position-${index+1}-doc-${doctor.pk}`} checked={doctorData.preferredPositions[index]} onChange={inputHandler} />
     });
@@ -165,6 +171,10 @@ export default function DoctorForm(props) {
     return (
         <div>
             <Form onSubmit={submitHandler}>
+                <Form.Group className="mb-4">
+                    <Form.Control type="submit" value="Zapisz ustawienia" className='btn btn-primary' />
+                    { messages.success && <Form.Text>{messages.success}</Form.Text> }
+                </Form.Group>
                 <Form.Group className="mb-4">
                     <FloatingLabel label="Maksymalna liczba dyżurów">
                         <Form.Control type="number" name="maxDuties" value={doctorData.maxDuties} onChange={inputHandler} placeholder="" />
@@ -213,8 +223,10 @@ export default function DoctorForm(props) {
                     </Form.Text>
                 </Form.Group>
                 <Form.Group>
-                    <Form.Control type="submit" value="Zapisz" className='btn btn-primary' />
-                    { messages.success && <Form.Text>{messages.success}</Form.Text> }
+                    <Form.Control type="submit" value="Usuń z grafiku" className='btn btn-light border' onClick={removeHandler} />
+                    <Form.Text>
+                        Lekarza możesz dodać z powrotem w zakładce "Dodaj lekarza" na dole strony.
+                    </Form.Text>
                 </Form.Group>
             </Form>
         </div>

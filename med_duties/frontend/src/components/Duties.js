@@ -48,7 +48,7 @@ export default function Duties() {
     );
 
     const leftCol = (
-            <div className="bg-warning min-vh-75 h-75 d-flex align-items-center justify-content-center">
+            <div className="bg-warning left-col d-flex align-items-center justify-content-center">
                 <div className="w-75 p-4 m-5 bg-light">
                     { scheduleDetails ? 
                         <div>
@@ -70,5 +70,5 @@ export default function Duties() {
         </div>
     );
 
-    return <ColumnLayout leftCol={leftCol} rightCol={rightCol} logoText={"Grafiki dyżurów"}/>
+    return <ColumnLayout leftCol={leftCol} rightCol={rightCol} logoPrimary={"Grafiki dyżurów"}/>
 }

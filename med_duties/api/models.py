@@ -119,8 +119,8 @@ class Duty(models.Model):
     position = models.PositiveIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(3)])
     strain_points = models.PositiveIntegerField()
-    doctor = models.ForeignKey(
-        'Doctor', on_delete=models.CASCADE, related_name='duties')
+    doctor = models.ForeignKey('Doctor', on_delete=models.CASCADE, 
+                               related_name='duties', blank=True, null=True)
     monthly_duties = models.ForeignKey(
         'MonthlyDuties', on_delete=models.CASCADE, related_name='duties')
     owner = models.ForeignKey('User', on_delete=models.CASCADE,

@@ -30,9 +30,17 @@ class MonthlyDuties {
         this.month = month;
         this.year = year;
         this.duties = {};
+
         unit.dutyPositions.forEach(position => {
             this.duties[position] = new Map();
         });
+        this.days.forEach(day => {
+            unit.dutyPositions.forEach(position => {
+                const duty = new Duty(day, null, position, day.strainPoints);
+                this.duties[position].set(day, duty);
+            });
+        });
+
         this.dutyPositions = unit.dutyPositions;
         this.doctors = unit.doctors;
         this.pk = pk;
@@ -41,6 +49,7 @@ class MonthlyDuties {
         this.setPk = this.setPk.bind(this);
         this.getPk = this.getPk.bind(this);
         this.addDoctors = this.addDoctors.bind(this);
+        this.removeDoctor = this.removeDoctor.bind(this);
         this.setDuties = this.setDuties.bind(this);
         this.setDuty = this.setDuty.bind(this);
         this.performChecks = this.performChecks.bind(this);
@@ -49,8 +58,11 @@ class MonthlyDuties {
         this.getMonth = this.getMonth.bind(this);
         this.getYear = this.getYear.bind(this);
         this.getDay = this.getDay.bind(this);
+        this.getDuty = this.getDuty.bind(this);
+        this.getDuties = this.getDuties.bind(this);
         this.whoIsOnDuty = this.whoIsOnDuty.bind(this);
 
+        this._removeDoctorDuties = this._removeDoctorDuties.bind(this);
         this._canDutiesBeSet = this._canDutiesBeSet.bind(this);
         this._assignAndPostCheck = this._assignAndPostCheck.bind(this);
         this._isThereEnoughDoctors = this._isThereEnoughDoctors.bind(this);
@@ -70,6 +82,7 @@ class MonthlyDuties {
         this._addAcceptedPositions = this._addAcceptedPositions.bind(this);
         this._log = this._log.bind(this);
         this._clearLog = this._clearLog.bind(this);
+        this.getStatistics = this.getStatistics.bind(this);
     }
 
     setPk(pk) {
@@ -84,6 +97,37 @@ class MonthlyDuties {
         this.doctors = this.doctors.concat(doctorList);
     }
 
+    addDuties(dutyList) {
+        dutyList.forEach(newDuty => {
+            const date = newDuty.getDay().number;
+            const position = newDuty.getPosition();
+            const day = this.getDay(date);
+            newDuty.day = day;
+            this.duties[position].set(day, newDuty);
+        });
+    }
+
+    removeDoctor(pk) {
+        const doctor = this.doctors.find(doc => doc.pk === pk);
+        doctor.clearDuties();
+        doctor.clearStrain();
+
+        this._removeDoctorDuties(doctor);
+
+        this.doctors = this.doctors.filter(doctor => !(doctor.pk === pk));
+    }
+
+    _removeDoctorDuties(doctor) {
+        this.dutyPositions.forEach(position => {
+            [...this.duties[position].entries()].forEach(entry => {
+                const [day, duty] = entry;
+                if (duty.getDoctor() === doctor) {
+                    this.duties[position].get(day).setDoctor(null);
+                }
+            });
+        });
+    }
+
     setDuties() {
         // Make sure it is a fresh start.
         this.clearDuties();
@@ -96,21 +140,7 @@ class MonthlyDuties {
 
         this._assignAndPostCheck();
 
-        // TESTING
-        const weekdays = ['Poniedziałek', 'Wtorek', 'Środa',
-                          'Czwartek', 'Piątek', 'Sobota', 'Niedziela'];
-        console.log('Done setting duties. Duties:');
-        this.days.forEach(day => {
-            const onDuty = [];
-            this.dutyPositions.forEach(position => {
-                const duty = this.duties[position].get(day);
-                onDuty.push(`${duty.position}. ${duty.doctor.name} `);
-            });
-            console.log(`Dzień ${day.number} --- ${onDuty.join('  ')} (${weekdays[day.weekday]})`);
-            if (day.weekday === 6) {
-                console.log(' ');
-            }
-        });
+        this._createChangesLog();
 
         return [true, this.duties, this.#log];
     }
@@ -501,8 +531,8 @@ class MonthlyDuties {
 
         // Limit iterations to fit number of days
         // not set via _assignPreferredDuties method.
-        const dutiesNotAssigned = this.days.length - this.duties[position].size;
-        
+        const dutiesNotAssigned = this.days.length - [...this.duties[position].values()].filter(d => d.getDoctor() !== null).length;
+
         for (const _ of range(dutiesNotAssigned)) {
             const byStrain = (docA, docB) => {
                 return docA.getStrain() - docB.getStrain();
@@ -528,11 +558,11 @@ class MonthlyDuties {
 
             for (const doctor of doctors) {
                 const evaluationChart = doctor.evaluateDuties(this, position);
- 
+
                 // If doctor has reached max number of duties, check another one.
                 if (evaluationChart === null) {
                     continue;
-                }              
+                }
 
                 const [bestDay, strainPoints] = evaluationChart.getBest();
 
@@ -542,29 +572,57 @@ class MonthlyDuties {
                 }
 
                 const duty = new Duty(bestDay, doctor, position, strainPoints);
-                
-                this.setDuty(duty, strainPoints);
+
+                this.setDuty(duty);
 
                 break;
             }
         }
     }
 
-    setDuty(duty, strainPoints) {
-        const doctor = duty.getDoctor();
-        const position = duty.getPosition();
-        const day = duty.getDay();
-        this.duties[position].set(day, duty);
+    setDuty(dutyData) {
+        const doctor = dutyData.getDoctor();
+        const position = dutyData.getPosition();
+        const date = dutyData.getDay().number;
+        const day = this.getDay(date);
+        const duty = this.duties[position].get(day);
+        duty.copy(dutyData);
         doctor.setDuty(duty);
-        doctor.setStrain(strainPoints);
+        doctor.setStrain(dutyData.getStrain());
+    }
+
+    changeDoctor(duty, newDoctor) {
+        // Check for double and multi-positioned duties.
+        if (newDoctor) {
+            const date = duty.getDay().number;
+            [date-1, date, date+1].forEach(dayNumber => {
+                if (dayNumber < 1 || dayNumber > this.days.length) {
+                    return;
+                }
+                const day = this.getDay(dayNumber);
+                this.dutyPositions.forEach(position => {
+                    const otherDuty = this.duties[position].get(day);
+                    const doc = otherDuty.getDoctor();
+                    if (doc === newDoctor) {
+                        this.changeDoctor(otherDuty, null);
+                    }
+                });
+            });
+        }
+        // Change doctor and save in duty and doctor instances.
+        const oldDoctor = duty.getDoctor();
+        duty.setDoctor(newDoctor);
+        oldDoctor && oldDoctor.removeDuty(duty);
+        newDoctor && newDoctor.setDuty(duty);
     }
 
     _checkForMissingDuties(position) {
         const errors = new Set();
         for (const day of this.days) {
-            if (![...this.duties[position].keys()].includes(day)) {
+            const duty = this.duties[position].get(day);
+            if (duty.getDoctor() === null) {
                 errors.add(`Nie ustalono dyżuru ${day.number}/` +
-                    `${day.month}/${day.year} na pozycji ${position}.`);
+                `${day.month}/${day.year} na pozycji ${position}.`);
             }
         }
         if (errors.size > 0) {
@@ -660,10 +718,6 @@ class MonthlyDuties {
 
             const maxDuties = chosenDoctor.getMaxNumberOfDuties();
             chosenDoctor.setMaxNumberOfDuties(maxDuties+1);
-
-            this.#log.push(`[RMD-${chosenDoctor.pk}-${maxDuties+1}]Podniesiono maksymalną ` +
-                `liczbę dyżurów lekarza: ${chosenDoctor.name} o 1 ` +
-                `do ${maxDuties + 1}`);
         } else {
             for (const doctor of this.doctors) {
                 if (doctor.isLocked()) {
@@ -671,10 +725,6 @@ class MonthlyDuties {
                 }
                 const maxDuties = doctor.getMaxNumberOfDuties();
                 doctor.setMaxNumberOfDuties(maxDuties+1);
-
-                this.#log.push(`[RMD-${doctor.pk}-${maxDuties+1}]Podniesiono maksymalną ` +
-                `liczbę dyżurów lekarza: ${doctor.name} o 1 ` +
-                `do ${maxDuties + 1}`);
             }
         }
     }
@@ -704,9 +754,6 @@ class MonthlyDuties {
             newPreferredWeekdays.sort();
 
             chosenDoctor.setPreferredWeekdays(newPreferredWeekdays);
-
-            this.#log.push(`[AAW-${chosenDoctor.pk}-${otherWeekdays[0]}]Dodano ${WEEKDAY_NAMES[otherWeekdays[0]]} ` +
-            `do dni tygodnia, w które dyżury bierze ${chosenDoctor.name}.`);
         }
     }
 
@@ -720,9 +767,6 @@ class MonthlyDuties {
             if (exceptions.length > 5) {
                 shuffle(exceptions);
                 doctor.setExceptions(exceptions.slice(0,5));
-                this.#log.push(`[CE-${doctor.pk}-${exceptions.join('_')}]${doctor.name}: zmniejszono liczbę ` +
-                    `zastrzeżeń do 5 losowo wybranych: ` +
-                    `${exceptions.slice(0,5).join(', ')}.`);
             }
         }
     }
@@ -752,10 +796,6 @@ class MonthlyDuties {
                 const newPosition = otherPositions[0];
                 const newPositions = [...preferredPositions, newPosition];
                 doctor.setPreferredPositions(newPositions);
-
-                this.#log.push(`[AAP-${doctor.pk}-${newPosition}]${doctor.name}: dodano pozycję ${newPosition} `+
-                    `do akceptowanych pozycji dyżurowych. (Akceptowane ` +
-                    `pozycje po zmianach: ${newPositions.join(', ')}).`);
             }
         }
     }
@@ -764,9 +804,52 @@ class MonthlyDuties {
         for (const doctor of this.doctors) {
             doctor.clearDuties();
             doctor.clearStrain();
+            this._removeDoctorDuties(doctor);
         }
-        for (const position of this.dutyPositions) {
-            this.duties[position] = new Map();
+    }
+
+    _createChangesLog() {
+        for (const doctor of this.doctors) {
+            const changes = doctor.getChangedSettings();
+
+            if (Object.keys(changes).length > 0) {
+                this._log(`${doctor.name.toUpperCase()}`);
+
+                if ('maxNumberOfDuties' in changes) {
+                    const newMaxDuties = doctor.getMaxNumberOfDuties();
+                    const oldMaxDuties = changes.maxNumberOfDuties;
+                    this._log(`[RMD-${doctor.pk}] - ` +
+                        `Podniesiono maksymalną liczbę dyżurów ` +
+                        `o ${oldMaxDuties} do ${newMaxDuties}.`)
+                }
+
+                if ('exceptions' in changes) {
+                    const newExceptions = doctor.getExceptions();
+                    const removedExceptions = changes.exceptions;
+                    const allExceptions = newExceptions.concat(removedExceptions);
+                    this._log(`[CE-${doctor.pk}] - ` +
+                        `Usunięto z zastrzeżeń dni: ${removedExceptions}, ` +
+                        `pozostawiając: ${newExceptions}.`);
+                }
+
+                if ('preferredPositions' in changes) {
+                    const newPositions = doctor.getPreferredPositions();
+                    const addedPositions = changes.preferredPositions;
+                    this._log(`[AAP-${doctor.pk}] - ` +
+                        `Dodano akceptowane pozycje dyżurowe: ` +
+                        `${addedPositions.join(', ')} `+
+                        `(łacznie ${newPositions.join(', ')}).`);
+                }
+
+                if ('preferredWeekdays' in changes) {
+                    const newWeekdays = doctor.getPreferredWeekdays();
+                    const addedWeekdays = changes.preferredWeekdays;
+                    this._log(`[AAW-${doctor.pk}] - ` +
+                        `Dodano akceptowane dni tygodnia: ` +
+                        `${addedWeekdays.map(d => WEEKDAY_NAMES[d]).join(', ')} ` +
+                        `(łącznie ${newWeekdays.map(d => WEEKDAY_NAMES[d]).join(', ')}).`);
+                }
+            }
         }
     }
 
@@ -794,6 +877,11 @@ class MonthlyDuties {
         return this.duties;
     }
 
+    getDuty(dayNumber, position) {
+        const day = this.getDay(dayNumber);
+        return this.duties[position].get(day);
+    }
+
     getDay(dayNumber) {
         return this.days[dayNumber-1];
     }
@@ -802,13 +890,47 @@ class MonthlyDuties {
         const day = this.getDay(dayNumber);
         const duties = {};
         for (const position of this.dutyPositions) {
-            if ([...this.duties[position].keys()].includes(day)) {
+            if (day) {
                 duties[position] = this.duties[position].get(day).getDoctor();
             } else {
                 duties[position] = null;
             }
         }
         return duties;
+    }
+
+    getStatistics() {
+        const statistics = [];
+        this.doctors.forEach(doctor => {
+            statistics.push(doctor.getStatistics());
+        });
+        const total = statistics.reduce((prev, item) => {
+            Object.entries(item).forEach(entry => {
+                const name = entry[0];
+                const value = entry[1];
+                if (name !== 'name') {
+                    prev[name] += value;
+                }                
+            });
+            return prev;
+        },{
+            name: 'Razem',
+            duties: 0,
+            strain: 0,
+            weekends: 0,
+            weekendDays: 0,
+            holidays: 0,
+            0: 0,
+            1: 0,
+            2: 0,
+            3: 0,
+            4: 0,
+            5: 0,
+            6: 0,
+        });
+        statistics.push(total);
+
+        return statistics;
     }
 }
 
