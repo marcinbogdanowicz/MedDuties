@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Form from 'react-bootstrap/Form';
 import Col from 'react-bootstrap/Col';
+import Dropdown from 'react-bootstrap/Dropdown';
 
 export default function ScheduleTile(props) {
     const setDoctorOnDuty = props.setDoctorOnDuty;
@@ -61,7 +62,25 @@ export default function ScheduleTile(props) {
         <div className="duty-tile-off-duty">Nie obsadzono</div> : 
         <div className="duty-tile-on-duty">{doctor.name}</div>;
 
-    const edit = <div className="duty-tile-control control" onClick={toggleForm}>✎</div>;
+    const customToggle = React.forwardRef(({children, onClick}, ref) => (
+        <div 
+        className="duty-tile-control control" 
+        ref={ref}
+        onClick={(e) => {e.preventDefault(); onClick(e)}}>
+        ✎
+        </div>
+    ));
+
+    const edit = (
+        <Dropdown>
+            <Dropdown.Toggle as={customToggle} />
+            <Dropdown.Menu>
+                <Dropdown.Item eventKey={1}>Marta</Dropdown.Item>
+                <Dropdown.Item eventKey={2}>Gosia</Dropdown.Item>
+                <Dropdown.Item eventKey={3}>Zosia</Dropdown.Item>
+            </Dropdown.Menu>
+        </Dropdown>
+    );
     const empty = <div className="duty-tile-control control" onClick={() => setDoctorOnDuty(duty, null)}>✕</div>
 
     const options = [];
