@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Form from 'react-bootstrap/Form';
 import FloatingLabel from 'react-bootstrap/FloatingLabel';
+import Calendar from './Calendar';
 import { range } from './algorithm/utils';
 
 
@@ -16,9 +17,9 @@ export default function DoctorForm(props) {
 
     const [doctorData, setDoctorData] = useState({
         maxDuties: 0,
-        exceptions: '',
-        preferredDays: '',
-        preferredWeekdays: [true, true, true, true, true, true, true],
+        exceptions: [],
+        preferredDays: [],
+        preferredWeekdays: [],
         preferredPositions: [false, false, false],
         locked: false,
     });
@@ -26,11 +27,9 @@ export default function DoctorForm(props) {
     useEffect(() => {
         setDoctorData((prevData) => ({
             maxDuties: doctor.getMaxNumberOfDuties(),
-            exceptions: doctor.getExceptions().join(', '),
-            preferredDays: doctor.getPreferredDays().join(', '),
-            preferredWeekdays: range(7).map((_, index) => {
-                return doctor.getPreferredWeekdays().includes(index);
-            }),
+            exceptions: doctor.getExceptions(),
+            preferredDays: doctor.getPreferredDays(),
+            preferredWeekdays: doctor.getPreferredWeekdays(),
             preferredPositions: doctor.unit.dutyPositions.map(position => {
                 return doctor.getPreferredPositions().includes(position);
             }),
@@ -48,14 +47,7 @@ export default function DoctorForm(props) {
     const inputHandler = (event) => {
         var { name, value } = event.target;
 
-        if (name.slice(0,7) === 'weekday') {
-            const index = parseInt(name.slice(-1));
-            const weekdays = [...doctorData.preferredWeekdays];
-            value = event.target.checked;
-            name = 'preferredWeekdays';
-            weekdays.splice(index,1,value);
-            value = weekdays;
-        } else if (name.slice(0,8) === 'position') {
+        if (name.slice(0,8) === 'position') {
             const index = parseInt(name.slice(-1)) - 1;
             const positions = [...doctorData.preferredPositions];
             value = event.target.checked;
@@ -85,33 +77,21 @@ export default function DoctorForm(props) {
             newMessages.maxDuties = "Proszę podać liczbę w przedziale 1 - 15";
         }
 
-        ['exceptions', 'preferredDays'].forEach(key => {
-            const testRegex = /(^(\d{1,2},\s*)*\d{1,2}$)|^$/;
-            if (doctorData[key] === '') {
-                // pass
-            }
-            else if (!testRegex.test(doctorData[key])) {
-                newMessages[key] = ("Upewnij się, że podano liczby " +
-                 "oznaczające dni miesiąca, oddzielone przecinkami.");
-            }
-            else {
-                const regex = /(?<=,|^|\s)\d{1,2}(?=,|$)/g;
-                const outOfRange = (doctorData[key]
-                    .match(regex)
-                    .some(number => number < 1 || number > daysInMonth ));
-                if (outOfRange) {
-                    newMessages[key] = (`Proszę podać liczby w przedziale ` +
-                        `od 1 do ${daysInMonth}`);
-                }
-            }
-        });
+        if (doctorData.exceptions.some(exc => (exc < 1 || exc > daysInMonth))) {
+            newMessages.exceptions = `Zastrzeżenia: proszę wybrać liczby z przedziału 1-${daysInMonth}`;
+        }
 
-        ['preferredWeekdays', 'preferredPositions'].forEach(key => {
-            const allFalse = doctorData[key].every(item => !item);
-            if (allFalse) {
-                newMessages[key] = ("Proszę zaznaczyć przynajmniej jedną pozycję.");
-            }
-        });
+        if (doctorData.preferredDays.some(d => (d < 1 || d > daysInMonth))) {
+            newMessages.preferredDays = `Preferowane dni miesiąca: proszę wybrać liczbę z przedziału 1-${daysInMonth}`;
+        }
+
+        if (doctorData.preferredWeekdays.some(wd => (wd < 0 || wd > 6))) {
+            newMessages.preferredWeekdays = `Preferowane dni tygodnia: proszę wybrać liczbę z przedziału 0 - 6`;
+        }
+
+        if (doctorData.preferredPositions.every(pos => !pos)) {
+            newMessages.preferredPositions = "Proszę zaznaczyć przynajmmniej jedną pozycję.";
+        }
 
         if (Object.keys(newMessages).length > 0) {
             setMessages(newMessages);
@@ -125,22 +105,9 @@ export default function DoctorForm(props) {
         const data = {};
         data.pk = doctor.pk;
         data.maxDuties = parseInt(doctorData.maxDuties);
-        ['exceptions', 'preferredDays'].forEach(key => {
-            if (doctorData[key] === '') {
-                data[key] = [];
-            } 
-            else {
-                const regex = /(?<=,|^|\s)\d{1,2}(?=,|$)/g;
-                const daysArr = doctorData[key].match(regex).map(day => parseInt(day));
-                data[key] = [...new Set(daysArr)];
-            }
-        });
-        data.preferredWeekdays = [];
-        doctorData.preferredWeekdays.forEach((item, index) => {
-            if (item) {
-                data.preferredWeekdays.push(index);
-            }
-        });
+        data.exceptions = doctorData.exceptions;
+        data.preferredDays = doctorData.preferredDays;
+        data.preferredWeekdays = doctorData.preferredWeekdays;
         data.preferredPositions = [];
         doctorData.preferredPositions.forEach((item, index) => {
             if (item) {
@@ -182,30 +149,20 @@ export default function DoctorForm(props) {
                     { messages.maxDuties && <Form.Text className="text-danger">{ messages.maxDuties }</Form.Text> }
                 </Form.Group>
                 <Form.Group className="mb-1">
-                    <FloatingLabel label="Zastrzeżenia">
-                        <Form.Control type="text" name="exceptions" value={doctorData.exceptions} onChange={inputHandler} placeholder="" />
-                    </FloatingLabel>
-                    <Form.Text>Wpisz numery dni po przecinku.</Form.Text>
-                    { messages.exceptions && <Form.Text className="text-danger"><br />{ messages.exceptions }</Form.Text> }
-                </Form.Group>
-                <Form.Group className="mb-1">
-                    <FloatingLabel label="Preferowane dni miesiąca">
-                        <Form.Control type="text" name="preferredDays" value={doctorData.preferredDays} onChange={inputHandler} placeholder="" />
-                    </FloatingLabel>
-                    <Form.Text>Wpisz numery dni po przecinku.</Form.Text>
-                    { messages.preferredDays && <Form.Text className="text-danger"><br />{ messages.preferredDays }</Form.Text> }
-                </Form.Group>
-                <Form.Group className="mb-3">
-                    <Form.Label>Preferowane dni tygodnia</Form.Label>
-                    <div>
-                        <Form.Check inline type="checkbox" name="weekday-0" label="Pon." id={`weekday-0-doc-${doctor.pk}`} checked={doctorData.preferredWeekdays[0]} onChange={inputHandler} />
-                        <Form.Check inline type="checkbox" name="weekday-1" label="Wt." id={`weekday-1-doc-${doctor.pk}`} checked={doctorData.preferredWeekdays[1]} onChange={inputHandler} />
-                        <Form.Check inline type="checkbox" name="weekday-2" label="Śr." id={`weekday-2-doc-${doctor.pk}`} checked={doctorData.preferredWeekdays[2]} onChange={inputHandler} />
-                        <Form.Check inline type="checkbox" name="weekday-3" label="Czw." id={`weekday-3-doc-${doctor.pk}`} checked={doctorData.preferredWeekdays[3]} onChange={inputHandler} />
-                        <Form.Check inline type="checkbox" name="weekday-4" label="Pt." id={`weekday-4-doc-${doctor.pk}`} checked={doctorData.preferredWeekdays[4]} onChange={inputHandler} />
-                        <Form.Check inline type="checkbox" name="weekday-5" label="Sob." id={`weekday-5-doc-${doctor.pk}`} checked={doctorData.preferredWeekdays[5]} onChange={inputHandler} />
-                        <Form.Check inline type="checkbox" name="weekday-6" label="Nied." id={`weekday-6-doc-${doctor.pk}`} checked={doctorData.preferredWeekdays[6]} onChange={inputHandler} />
-                    </div>
+                    <Form.Label>Wybierz preferencje dni</Form.Label>
+                    <Calendar 
+                        year={year} 
+                        month={month} 
+                        doctor={doctor}
+                        doctorData={{
+                            exceptions: doctorData.exceptions, 
+                            preferredDays: doctorData.preferredDays, 
+                            preferredWeekdays: doctorData.preferredWeekdays
+                        }} 
+                        setDoctorData={setDoctorData}
+                    />
+                    { messages.exceptions && <Form.Text className="text-danger">{ messages.exceptions }</Form.Text> }
+                    { messages.preferredDays && <Form.Text className="text-danger">{ messages.preferredDays }</Form.Text> }
                     { messages.preferredWeekdays && <Form.Text className="text-danger">{ messages.preferredWeekdays }</Form.Text> }
                 </Form.Group>
                 <Form.Group className="mb-3">

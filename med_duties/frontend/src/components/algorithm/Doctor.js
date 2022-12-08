@@ -128,6 +128,9 @@ class Doctor {
         this.restorePreferredWeekdays = this.restorePreferredWeekdays.bind(this);
         this.getChangedSettings = this.getChangedSettings.bind(this);
         this.getStatistics = this.getStatistics.bind(this);
+
+        this._getPreviousMonthModfiers = this._getPreviousMonthModfiers.bind(this);
+        this._getNextMonthModfiers = this._getNextMonthModfiers.bind(this);
     }
 
     setPk(pk) {
@@ -160,7 +163,10 @@ class Doctor {
 
         const evaluationChart = new EvaluationChart(daysOfMonth, this);
 
-        // Get previous month's modifiers method was called here originally.
+        this._getPreviousMonthModfiers(
+            evaluationChart, month.getPrevMonthDuties());
+        this._getNextMonthModfiers(
+            evaluationChart, month.getNextMonthDuties());
 
         for (const day of daysOfMonth) {
 
@@ -178,7 +184,7 @@ class Doctor {
             const dutyOnThisPositionTaken = (
                 month.whoIsOnDuty(today)[position] !== null);
             const iAmOnDutyOnAnyPosition = Object.values(month.whoIsOnDuty(today)).some(entry => {
-                    if (entry !== null) {
+                    if (entry) {
                         return entry.pk === this.pk;
                     } else {
                         return false;
@@ -196,7 +202,7 @@ class Doctor {
             const iDontHaveDutiesOnTwoWeekendsYet = (
                 (weekendsIHaveDutiesOn.length < 2));
             const iAmNotOnDutyTwoDaysAgo = !(Object.values(month.whoIsOnDuty(today - 2)).some(entry => {
-                if (entry !== null) {
+                if (entry) {
                     return entry.pk === this.pk;
                 }
                 return false;
@@ -208,12 +214,10 @@ class Doctor {
 
             if (iMadeExceptionForToday) {
                 evaluationChart.modifyPoints(today, MODIFIER_DUTY_IMPOSSIBLE);
-                continue;
             }
 
             if (iDontTakeDutiesOnThisWeekday) {
                 evaluationChart.modifyPoints(today, MODIFIER_DUTY_IMPOSSIBLE);
-                continue;
             }
 
             if (dutyOnThisPositionTaken) {
@@ -273,8 +277,83 @@ class Doctor {
         return evaluationChart;
     }
 
-    // Method for getting previous month's modifiers 
-    // was implemented here originally.
+    _getPreviousMonthModfiers(evaluationChart, prevDuties) {
+        // Applies impact from closing duties of previous month.
+        // Same modifiers as in evaluate duties method are used.
+        const prevMonth = this.#month === 1 ? 12 : this.#month-1;
+        const prevYear = this.#month === 1 ? this.#year-1 : this.#year;
+        const prevMonthLen = new Date(prevYear, prevMonth, 0).getDate();
+
+        const myPrevDutyDates = [...new Set(
+            prevDuties
+            .filter(d => {
+                if (d.doctor) {
+                    return d.doctor.pk === this.pk;
+                }
+                return false;
+            })
+            .map(d => d.day.number)
+        )];
+        if (!myPrevDutyDates.length) {
+            return;
+        }
+        myPrevDutyDates.sort();
+
+        const modifier = {
+            3: MODIFIER_DUTY_IMPOSSIBLE,
+            2: MODIFIER_TWO_DAYS_APART,
+            1: MODIFIER_THREE_DAYS_APART,
+            0: MODIFIER_FOUR_DAYS_APART
+        };
+
+        for (const date of myPrevDutyDates) {
+            if ((prevMonthLen - date) < 4) {
+                const daysAffected = 4 - (prevMonthLen - date);
+                for (const i of range(1, daysAffected+1)) {
+                    evaluationChart.modifyPoints(i, modifier[daysAffected - i]);
+                }
+            }
+        }
+    }
+
+    _getNextMonthModfiers(evaluationChart, nextDuties) {
+        // Applies impact from opening duties of next month.
+        // Same modifiers as in evaluate duties method are used.
+        const nextMonth = this.#month === 12 ? 1 : this.#month+1;
+        const nextYear = this.#month === 12 ? this.#year+1 : this.#year;
+        const thisMonthLength = new Date(this.#year, this.#month, 0).getDate();
+
+        const myNextDutyDates = [...new Set(
+            nextDuties
+            .filter(d => {
+                if (d.doctor) {
+                    return d.doctor.pk === this.pk;
+                }
+                return false;
+            })
+            .map(d => d.day.number)
+        )];
+        if (!myNextDutyDates.length) {
+            return;
+        }
+        myNextDutyDates.sort();
+
+        const modifier = {
+            3: MODIFIER_DUTY_IMPOSSIBLE,
+            2: MODIFIER_TWO_DAYS_APART,
+            1: MODIFIER_THREE_DAYS_APART,
+            0: MODIFIER_FOUR_DAYS_APART
+        };
+
+        for (const date of myNextDutyDates) {
+            if (date < 5) {
+                const daysAffected = 5 - date;
+                for (const i of range(daysAffected)) {
+                    evaluationChart.modifyPoints(thisMonthLength-i, modifier[daysAffected - i - 1]);
+                }
+            }
+        }
+    }
 
     setDuty(duty) {
         this.duties.push(duty);
@@ -336,12 +415,22 @@ class Doctor {
         return this.strain;
     }
 
-    clearDuties() {
-        this.duties = [];
+    clearDuties(clearUserSetToo=false) {
+        if (clearUserSetToo) {
+            this.duties = [];
+        } else {
+            this.duties = this.duties.filter(duty => duty.isUserSet() === true);
+        }
     }
 
-    clearStrain() {
-        this.strain = 0;
+    clearStrain(clearUserSetToo=false) {
+        if (clearUserSetToo) {
+            this.strain = 0;
+        } else {
+            this.strain = (this.duties
+                .filter(duty => duty.isUserSet() === true)
+                .reduce((prevVal, currDuty) => prevVal + currDuty.getStrain(), 0));
+        }
     }
 
     setExceptions(exceptionList, saveInit=false) {

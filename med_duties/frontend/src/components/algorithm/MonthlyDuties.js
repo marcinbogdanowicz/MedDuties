@@ -18,6 +18,8 @@ class MonthlyDuties {
     month;
     year;
     duties;
+    prevMonthDuties;
+    nextMonthDuties;
     dutyPositions;
     doctors;
     #log;
@@ -29,27 +31,35 @@ class MonthlyDuties {
             day => new Day(year, month, day));
         this.month = month;
         this.year = year;
-        this.duties = {};
 
+        this.duties = {};
         unit.dutyPositions.forEach(position => {
             this.duties[position] = new Map();
         });
         this.days.forEach(day => {
             unit.dutyPositions.forEach(position => {
-                const duty = new Duty(day, null, position, day.strainPoints);
+                const duty = new Duty(day, null, position, day.strainPoints, null, false);
                 this.duties[position].set(day, duty);
             });
         });
 
+        this.prevMonthDuties = [];
+        this.nextMonthDuties = [];
+
         this.dutyPositions = unit.dutyPositions;
         this.doctors = unit.doctors;
         this.pk = pk;
+
         this.#log = [];
 
         this.setPk = this.setPk.bind(this);
         this.getPk = this.getPk.bind(this);
         this.addDoctors = this.addDoctors.bind(this);
         this.removeDoctor = this.removeDoctor.bind(this);
+        this.addPrevMonthDuties = this.addPrevMonthDuties.bind(this);
+        this.getPrevMonthDuties = this.getPrevMonthDuties.bind(this);
+        this.addNextMonthDuties = this.addNextMonthDuties.bind(this);
+        this.getNextMonthDuties = this.getNextMonthDuties.bind(this);
         this.setDuties = this.setDuties.bind(this);
         this.setDuty = this.setDuty.bind(this);
         this.performChecks = this.performChecks.bind(this);
@@ -99,11 +109,29 @@ class MonthlyDuties {
 
     addDuties(dutyList) {
         dutyList.forEach(newDuty => {
+            // Make sure day instance is equal to one stored in MD instance.
             const date = newDuty.getDay().number;
             const position = newDuty.getPosition();
             const day = this.getDay(date);
             newDuty.day = day;
+
+            // Remove old duty from its doctor if there is one.
+            const oldDuty = this.duties[position].get(day);
+            const oldDoctor = oldDuty.getDoctor();
+            if (oldDoctor) {
+                oldDoctor.removeDuty(oldDuty);
+                oldDoctor.setStrain(-oldDuty.getStrain());
+            }
+
+            // Set new duty.
             this.duties[position].set(day, newDuty);
+
+            // Set new duty for doctor if there is one.
+            const newDoctor = newDuty.getDoctor();
+            if (newDoctor) {
+                newDoctor.setDuty(newDuty);
+                newDoctor.setStrain(newDuty.getStrain());
+            }
         });
     }
 
@@ -117,15 +145,37 @@ class MonthlyDuties {
         this.doctors = this.doctors.filter(doctor => !(doctor.pk === pk));
     }
 
-    _removeDoctorDuties(doctor) {
+    _removeDoctorDuties(doctor, clearUserSetToo=false) {
         this.dutyPositions.forEach(position => {
             [...this.duties[position].entries()].forEach(entry => {
                 const [day, duty] = entry;
-                if (duty.getDoctor() === doctor) {
+                if ((!duty.isUserSet() || clearUserSetToo) 
+                        && duty.getDoctor() === doctor) {
                     this.duties[position].get(day).setDoctor(null);
+                    this.duties[position].get(day).userSet(false);
                 }
             });
         });
+    }
+
+    addPrevMonthDuties(dutyList) {
+        for (const duty of dutyList) {
+            this.prevMonthDuties.push(duty);
+        }
+    }
+
+    getPrevMonthDuties() {
+        return this.prevMonthDuties;
+    }
+
+    addNextMonthDuties(dutyList) {
+        for (const duty of dutyList) {
+            this.nextMonthDuties.push(duty);
+        }
+    }
+
+    getNextMonthDuties() {
+        return this.nextMonthDuties;
     }
 
     setDuties() {
@@ -188,6 +238,20 @@ class MonthlyDuties {
         const numberOfPositions = this.dutyPositions.length;
         const errors = new Set();
 
+        // Create a dict of positions taken on each day
+        // for positions compatibility testing
+        const takenPositions = {};
+        this.days.forEach(day => {
+            const positionsToAdd = [];
+            this.dutyPositions.forEach(position => {
+                const duty = this.duties[position].get(day);
+                if (duty.getDoctor() !== null && duty.isUserSet()) {
+                    positionsToAdd.push(duty.getPosition());
+                }
+            });
+            takenPositions[day.number] = positionsToAdd;
+        });
+
         for (const doctor of this.doctors) {
             const exceptions = doctor.getExceptions();
             const preferredDays = doctor.getPreferredDays();
@@ -218,26 +282,33 @@ class MonthlyDuties {
             // on any of his prefered positions.
             for (const dayNumber of preferredDays) {
 
+                const preferredPositionsExcludingTaken = (
+                    doctorsPreferredPositions.filter(position => {
+                        return !takenPositions[dayNumber].includes(position);
+                }));
+
                 const allPositionsTaken = (
                     preferredPositions[dayNumber].length
-                    === numberOfPositions
+                    === (this.dutyPositions.length 
+                        - takenPositions[dayNumber].length)
                 );
                 const uniquePositionsIncludingDoctors = new Set(
                     preferredPositions[dayNumber]
                     .flat()
-                    .concat(doctorsPreferredPositions)
+                    .concat(preferredPositionsExcludingTaken)
                 );
                 const doctorsPositionWillFit = (
                     uniquePositionsIncludingDoctors.size
                     >= (preferredPositions[dayNumber].length + 1)
                 );
+
                 if (allPositionsTaken || (!doctorsPositionWillFit)) {
                     errors.add(`Dzień ${dayNumber}/${this.month}/${this.year} ` +
                     'jest preferowany przez więcej lekarzy niż liczba obsady.')
                 } else {
                 // If any of positions fit, add them
                 // to check further doctors agains them.
-                    preferredPositions[dayNumber].push(doctorsPreferredPositions);
+                    preferredPositions[dayNumber].push(preferredPositionsExcludingTaken);
                 }
 
                 // Check if doctor's preferences are not on consecutive days.
@@ -268,7 +339,7 @@ class MonthlyDuties {
         if (!enoughDoctors || !maxDutiesOk || !preferredDaysOk) {
             return [false, this.#log];
         }
-        return [true, ['Nie wykryto błędów. Dyżury zostaną ułożone bez zmiany ustawień.']];
+        return [true, ['Nie wykryto błędów. Dyżury zostaną ułożone.']];
     }
 
     _isThereEnoughDoctorsForEachPosition() {
@@ -466,29 +537,35 @@ class MonthlyDuties {
     }
 
     _assignAndPostCheck(iteration=1) {
+
         this._assignPreferredDuties();
 
-        for (const position of this.dutyPositions) {
-            this._assignDuties(position);
+        try {
+            for (const position of this.dutyPositions) {
+                this._assignDuties(position);
 
-            try {
                 this._checkForMissingDuties(position);
                 this._checkForForbiddenDuties();
-            } catch (error) {
-                console.log(error);
-                this.clearDuties();
-                if (iteration > 5) {
-                    this._raiseMaxDuties();
-                }
-                if (iteration > 20) {
-                    this._addAcceptedWeekdays();
-                }
-                if (iteration % 15 === 0 && iteration > 0) {
-                    this._addAcceptedPositions();
-                }
-                if (iteration % 50 === 0) {
-                    this._cutExceptions();
-                }
+                } 
+
+        } catch (error) {
+            console.log(error.message);
+            this.clearDuties();
+
+            if (iteration % 5 === 0 && iteration > 10) {
+                this._raiseMaxDuties();
+            }
+            if (iteration % 5 === 0 && iteration > 20) {
+                this._addAcceptedWeekdays();
+            }
+            if (iteration % 10 === 0 && iteration > 30) {
+                this._addAcceptedPositions();
+            }
+            if (iteration === 50) {
+                this._cutExceptions();
+            }
+
+            if (iteration < 200) {
                 console.log(`Iteration: ${iteration}`);
                 this._assignAndPostCheck(iteration+1);
             }
@@ -499,12 +576,25 @@ class MonthlyDuties {
         // Pre-assign, omits doctors' evaluation.
         const duties = new DefaultDict(Map);
 
+        // Create a dict of positions taken on each day
+        // for preferred positions corrections
+        const takenPositions = {};
+        for (const day of this.days) {
+            takenPositions[day.number] = (Object.entries(this.whoIsOnDuty(day.number))
+                .filter(entry => entry[1] !== null)
+                .map(entry => parseInt(entry[0])));
+        };
+
         for (const doctor of this.doctors) {
             const preferences = doctor.getPreferredDays();
 
-            for (const day of preferences) {
+            for (const date of preferences) {
                 const preferredPositions = doctor.getPreferredPositions();
-                duties[day].set(doctor, preferredPositions);
+
+                const allowedPositions = preferredPositions.filter(position => {
+                    return !takenPositions[date].includes(position);
+                })
+                duties[date].set(doctor, allowedPositions);
             }
         }
 
@@ -517,14 +607,14 @@ class MonthlyDuties {
             doctors.forEach((doc, index) => {
                 const pos = chosenOption[index];
                 const dayObj = this.getDay(dayNumber);
-                const duty = new Duty(dayObj, doc, pos, dayObj.strainPoints);
+                const duty = new Duty(dayObj, doc, pos, dayObj.strainPoints, null, false);
                 this.setDuty(duty, dayObj.strainPoints);
             });
         }
     }
 
     _assignDuties(position) {
-        // Assign all duties except doctors preferences.
+        // Assign duties for doctors, who accept current position.
         const doctors = this.doctors.filter(doctor => {
             return doctor.getPreferredPositions().includes(position);
         });
@@ -571,7 +661,7 @@ class MonthlyDuties {
                     continue;
                 }
 
-                const duty = new Duty(bestDay, doctor, position, strainPoints);
+                const duty = new Duty(bestDay, doctor, position, strainPoints, null, false);
 
                 this.setDuty(duty);
 
@@ -583,15 +673,14 @@ class MonthlyDuties {
     setDuty(dutyData) {
         const doctor = dutyData.getDoctor();
         const position = dutyData.getPosition();
-        const date = dutyData.getDay().number;
-        const day = this.getDay(date);
+        const day = this.getDay(dutyData.getDay().number);
         const duty = this.duties[position].get(day);
         duty.copy(dutyData);
         doctor.setDuty(duty);
         doctor.setStrain(dutyData.getStrain());
     }
 
-    changeDoctor(duty, newDoctor) {
+    changeDoctor(duty, newDoctor, userSet=false) {
         // Check for double and multi-positioned duties.
         if (newDoctor) {
             const date = duty.getDay().number;
@@ -612,6 +701,7 @@ class MonthlyDuties {
         // Change doctor and save in duty and doctor instances.
         const oldDoctor = duty.getDoctor();
         duty.setDoctor(newDoctor);
+        duty.userSet(userSet);
         oldDoctor && oldDoctor.removeDuty(duty);
         newDoctor && newDoctor.setDuty(duty);
     }
@@ -660,6 +750,7 @@ class MonthlyDuties {
                     !preferredWeekdays.includes(duties[i].getDay().weekday));
                 const iHaveDutyOnExcludedPosition = (
                     !preferredPositions.includes(duties[i].getPosition()));
+                const dutyIsUserSet = duties[i].isUserSet();
 
                 if (twoDutiesOnSameDay) {
                     errors.add(`${doctor.name} ma zaplanowanych wiele dyżurów ` +
@@ -670,17 +761,17 @@ class MonthlyDuties {
                         `następujące po sobie dni ${dates[i]} i ${dates[i] + 1}` +
                         `/${this.month}/${this.year}.`);
                 }
-                if (iHaveDutyOnExcludedDay) {
+                if (iHaveDutyOnExcludedDay && !dutyIsUserSet) {
                     errors.add(`${doctor.name} ma zaplanowany dyżur w zastrzeżony ` +
                         `dzień ${dates[i]}/${this.month}/${this.year}.`);
                 }
-                if (iHaveDutyOnExcludedWeekday) {
+                if (iHaveDutyOnExcludedWeekday && !dutyIsUserSet) {
                     errors.add(`${doctor.name} ma zaplanowany dyżur w ` +
                         `dzień tygodnia: ${WEEKDAY_NAMES[duties[i].getDay().weekday]}, `+
                         `który nie znajduje się na liście dni tygodnia, w które `+
                         `może brać dyżury.`);
                 }
-                if (iHaveDutyOnExcludedPosition) {
+                if (iHaveDutyOnExcludedPosition && !dutyIsUserSet) {
                     errors.add(`${doctor.name} ma zaplanowany dyżur ${dates[i]}` +
                     `/${this.month}/${this.year} na pozycji ${duties[i].getPosition()}, `+
                     `która nie znajduje się na liście pozycji, na których ` +
@@ -701,7 +792,8 @@ class MonthlyDuties {
         // of duties to match number of available days.
         const doctors = this.doctors.filter(doctor => {
             const preferredWeekdays = doctor.getPreferredWeekdays();
-            if (preferredWeekdays.length > 3 && !doctor.isLocked()) {
+            const maxDuties = doctor.getMaxNumberOfDuties();
+            if (preferredWeekdays.length > 3 && maxDuties < 15 && !doctor.isLocked()) {
                 return doctor;
             }
         });
@@ -720,10 +812,10 @@ class MonthlyDuties {
             chosenDoctor.setMaxNumberOfDuties(maxDuties+1);
         } else {
             for (const doctor of this.doctors) {
-                if (doctor.isLocked()) {
+                const maxDuties = doctor.getMaxNumberOfDuties();
+                if (doctor.isLocked() || maxDuties >= 15) {
                     continue;
                 }
-                const maxDuties = doctor.getMaxNumberOfDuties();
                 doctor.setMaxNumberOfDuties(maxDuties+1);
             }
         }
@@ -736,7 +828,7 @@ class MonthlyDuties {
                 return doctor;
             }
         });
-        
+
         if (doctors.length > 0) {
             shuffle(doctors);
             const byPreferredWeekdays = (docA, docB) => {
@@ -772,7 +864,6 @@ class MonthlyDuties {
     }
 
     _addAcceptedPositions() {
-        const changes = new Set();
         var docs = [];
         for (let numberOfPositions = 1; 
                 numberOfPositions < this.dutyPositions.length; 
@@ -800,11 +891,11 @@ class MonthlyDuties {
         }
     }
 
-    clearDuties() {
+    clearDuties(clearUserSetToo=false) {
         for (const doctor of this.doctors) {
-            doctor.clearDuties();
-            doctor.clearStrain();
-            this._removeDoctorDuties(doctor);
+            doctor.clearDuties(clearUserSetToo);
+            doctor.clearStrain(clearUserSetToo);
+            this._removeDoctorDuties(doctor, clearUserSetToo);
         }
     }
 

@@ -171,7 +171,7 @@ class DutySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Duty
-        fields = ('pk', 'day', 'position', 'strain_points', 'doctor', 'monthly_duties')
+        fields = ('pk', 'day', 'position', 'strain_points', 'doctor', 'monthly_duties', 'user_set')
 
     def create(self, validated_data):
         # Set user as owner during creation.
@@ -213,7 +213,7 @@ class DutyNestedSerializer(DutySerializer):
 
     class Meta:
         model = Duty
-        fields = ('pk', 'day', 'position', 'doctor', 'strain_points', 'monthly_duties', 'owner')
+        fields = ('pk', 'day', 'position', 'doctor', 'strain_points', 'monthly_duties', 'owner', 'user_set')
         extra_kwargs = {
             'pk': {'read_only': False, 'required': False},
             'owner': {'write_only': True, 'required': False},
@@ -271,7 +271,7 @@ class DoctorMonthlyDataNestedSerializer(DoctorMonthlyDataSerializer):
 class MonthlyDutiesSerializer(serializers.ModelSerializer):
     """
     Data input format: 
-    {"monthandyear":"10/2022","unit":1, 
+    {"monthandyear":"10/2022", 
         //  optional:
     "doctor_data":[
         {"doctor":1,
@@ -282,7 +282,7 @@ class MonthlyDutiesSerializer(serializers.ModelSerializer):
         {"doctor":2, ...}
     ],
     "duties":[
-        {"day":15,"position":1,"doctor":1},
+        {"day":15,"position":1,"doctor":1,"user_set":false},
         {"day":12, ...},
     ]}
     """
@@ -357,6 +357,7 @@ class MonthlyDutiesSerializer(serializers.ModelSerializer):
         # If so, extract them from validated_data.
         doctors_data = validated_data.get('doctor_data', None)
         if doctors_data:
+            print('There actually is doctor data o_O')
             doctors_data = validated_data.pop('doctor_data')
         duties = validated_data.get('duties', None)
         if duties:
@@ -389,11 +390,9 @@ class MonthlyDutiesSerializer(serializers.ModelSerializer):
                     print(doctor_data.items())
                     for name, attr in doctor_data.items():
                         setattr(dd_instance, name, attr)
-                    print('Found!')
                 except DoctorMonthlyData.DoesNotExist:
                     dd_instance = DoctorMonthlyData.objects.create(
                         **doctor_data)
-                    print('Not found, creating.')
                 dd_instance.full_clean()
                 dd_instance.save()
 

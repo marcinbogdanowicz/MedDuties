@@ -6,13 +6,17 @@ class Duty {
     strainPoints;
     pk;
 
-    constructor(day, doctor, position, strainPoints, pk=null) {
+    constructor(day, doctor, position, strainPoints, pk, setByUser) {
         this.day = day;
         this.doctor = doctor;
         this.position = position;
         this.strainPoints = strainPoints;
         this.pk = pk;
-    
+        this.setByUser = setByUser;
+        
+        this.getPk = this.getPk.bind(this);
+        this.userSet = this.userSet.bind(this);
+        this.isUserSet = this.isUserSet.bind(this);
         this.setDoctor = this.setDoctor.bind(this);
         this.copy = this.copy.bind(this);
         this.getDoctor = this.getDoctor.bind(this);
@@ -23,6 +27,18 @@ class Duty {
         this.getYear = this.getYear.bind(this);
     }
 
+    getPk() {
+        return this.pk
+    }
+
+    userSet(mode) {
+        this.setByUser = mode;
+    }
+
+    isUserSet() {
+        return this.setByUser;
+    }
+
     setDoctor(newDoctor) {
         this.doctor = newDoctor;
     }
@@ -30,6 +46,7 @@ class Duty {
     copy(data) {
         this.doctor = data.doctor;
         this.strainPoints = data.strainPoints;
+        this.setByUser = data.setByUser;
     }
 
     getDoctor() {

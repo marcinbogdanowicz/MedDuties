@@ -15,11 +15,11 @@ export default async function dutiesLoader() {
 
             // Get user's unit pk.
             var response = await axiosInstance.get('/user/' + userId + '/');
-            const unitPk = response.data.unit.pk;
+            const unit = response.data.unit;
 
             // Get unit's schedules data and pass it to view.
-            response = await axiosInstance.get('/unit/' + unitPk + '/duties/');
-            return [unitPk, response.data];
+            response = await axiosInstance.get('/unit/' + unit.pk + '/duties/');
+            return [unit, response.data];
             
         } catch (error) {
             console.log(error);

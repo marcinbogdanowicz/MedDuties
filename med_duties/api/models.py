@@ -125,6 +125,7 @@ class Duty(models.Model):
         'MonthlyDuties', on_delete=models.CASCADE, related_name='duties')
     owner = models.ForeignKey('User', on_delete=models.CASCADE,
                               related_name='owned_duties')
+    user_set = models.BooleanField(default=False)
 
     def __str__(self):
         return (f'{self.doctor} on {self.day}/' + 
