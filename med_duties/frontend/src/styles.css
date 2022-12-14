@@ -255,6 +255,7 @@
 
 .log-content li {
     list-style-type: "» ";
+    margin-bottom: 0.75rem;
 }
 
 .statistics-content {

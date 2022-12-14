@@ -24,6 +24,9 @@ class EvaluationChart {
     }
 
     getDayStrain(dayNumber) {
+        if (!(dayNumber in this.classification)) {
+            throw Error(`Klasyfikacja nie zawiera dnia: ${dayNumber}!`);
+        }
         return this.classification[dayNumber].strainPoints;
     }
 

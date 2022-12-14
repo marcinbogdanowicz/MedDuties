@@ -201,6 +201,14 @@ export function getDiff(iterable1, iterable2) {
     return diff;
 }
 
+export function union(set1, set2) {
+    const _union = new Set(set1);
+    for (const elem of set2) {
+        _union.add(elem);
+    }
+    return _union;
+}
+
 export function getKeyByValue(map, value) {
     for (const [k, v] of map.entries()) {
         if (v === value) {
