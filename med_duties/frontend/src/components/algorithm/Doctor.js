@@ -215,6 +215,8 @@ class Doctor {
             const iMadeExceptionForToday = this.getExceptions().includes(today);
             const iDontTakeDutiesOnThisWeekday = (
                 !this.getPreferredWeekdays().includes(day.weekday));
+            const iDontTakeDutiesOnThisPosition = (
+                !this.getPreferredPositions().includes(position));
             const dutyOnThisPositionTaken = (
                 Boolean(duties.get(day)[position].getDoctor()) === true);
             const iAmOnDutyOnAnyPosition = Object.values(whoIsOnDuty(today)).some(entry => {
@@ -245,6 +247,10 @@ class Doctor {
             }
 
             if (iDontTakeDutiesOnThisWeekday) {
+                evaluationChart.modifyPoints(today, MODIFIER_DUTY_IMPOSSIBLE);
+            }
+
+            if (iDontTakeDutiesOnThisPosition) {
                 evaluationChart.modifyPoints(today, MODIFIER_DUTY_IMPOSSIBLE);
             }
 

@@ -22,6 +22,7 @@ class MonthlyDuties {
     year;
     doctors;
     #preferences;
+    #daysOrder;
     dutyPositions;
     duties;
     prevMonthDuties;
@@ -37,6 +38,7 @@ class MonthlyDuties {
         this.year = year;
         this.doctors = unit.doctors;
         this.#preferences = {};
+        this.#daysOrder = [];
         this.dutyPositions = unit.dutyPositions;
 
         this.duties = new Map();
@@ -96,9 +98,12 @@ class MonthlyDuties {
         this._clearLog = this._clearLog.bind(this);
         this.getStatistics = this.getStatistics.bind(this);
 
+        this._getNextDay = this._getNextDay.bind(this);
         this._dutiesAreSet = this._dutiesAreSet.bind(this);
         this._assign = this._assign.bind(this);
         this._options = this._options.bind(this);
+        this._getNextDay = this._getNextDay.bind(this);
+        this._getActualPreferences = this._getActualPreferences.bind(this);
     }
 
     setPk(pk) {
@@ -759,7 +764,7 @@ class MonthlyDuties {
             // If frontier is empty, there is no solution.
             if (frontier.empty()) {
 
-                fs.appendFileSync('./test-outcome.txt', 'Error: no solution\n');
+                fs.appendFileSync('./test-outcome.txt', '\n\nError: no solution\n\n');
 
                 throw Error("Duties cannot be set.");
             }
@@ -797,7 +802,7 @@ class MonthlyDuties {
             }
 
             steps++; // TESTING
-            if (steps > 100) { // TESTING
+            if (steps > 200) { // TESTING
 
                 fs.appendFileSync('./test-outcome.txt', 'Breaking!\n');
 
@@ -807,7 +812,7 @@ class MonthlyDuties {
     }
 
     _dutiesAreSet(state) {
-           for (const day of [...this.days].reverse()) {
+        for (const day of this.days) {
             const dailyDuties = state.get(day);
             for (const position of this.dutyPositions) {
                 const duty = dailyDuties[position];
@@ -834,33 +839,20 @@ class MonthlyDuties {
     }
 
     _options(prevState, prevAction) {
-        const preferences = this.#preferences;
-        const date = prevAction.day + 1;
-        const day = this.getDay(date);
+        const duties = prevState;
+        const preferences = this._getActualPreferences(duties);
+        const date = this._getNextDay(preferences);
 
-        // Make sure it is not month's end.
-        if (date > this.days.length) {
+        // Check if there are enough doctors to form options for all positions.
+        if (preferences[date]['all'].length < this.dutyPositions.length) {
 
-            fs.appendFileSync('./test-outcome.txt', 'Month has ended, no new node needed.\n');
+            fs.appendFileSync('./test-outcome.txt', 'There are not enough doctors to fill all positions.\n');
 
             return [[null, null]];
         }
 
-        const duties = prevState;
+        const day = this.getDay(date);        
         const doctors = preferences[date]['all'];
-
-        // Make sure there are any doctors, who can take tomorrow's duties.
-        // Tomorrow's duties wouldn't be set anyway 
-        // if there were not enough doctors.
-        if (date < this.days.length) {
-            const nextDayDocs = preferences[date + 1]['all'].filter(d => d.getNumberOfDutiesLeft() > 0);
-            if (nextDayDocs.length < this.dutyPositions.length) {
-
-                fs.appendFileSync('./test-outcome.txt', 'There are not enough doctors for tomorrow - without checking todays combinations.\n');
-
-                return [[null, null]];
-            }
-        }
 
         // Get each doctor's strain for current day.
         const strains = new Map();
@@ -869,7 +861,7 @@ class MonthlyDuties {
 
         for (const doctor of doctors) {
 
-            fs.appendFileSync('./test-outcome.txt', `###--> ${doctor.name.toUpperCase()}\n`);
+            fs.appendFileSync('./test-outcome.txt', `doctor: ${doctor.name.toUpperCase()}\n`);
 
             const doctorStrains = {};
             for (const position of this.dutyPositions) {
@@ -883,9 +875,9 @@ class MonthlyDuties {
                 }
 
                 const content = (`/// Day ${date}, pos ${position}: ` +
-                    `${evaluationChart.getDayStrain(date)} ///\n` +
-                    `(${Object.values(evaluationChart.classification).map((v, i) => 
-                        `${v.day.number}-${v.strainPoints}${(i+1) % 10 === 0 ? '\n' : ''}`).join('---')})\n`);
+                    `${evaluationChart.getDayStrain(date)} ///\n`);
+                    //`(${Object.values(evaluationChart.classification).map((v, i) => 
+                    //    `${v.day.number}-${v.strainPoints}${(i+1) % 16 === 0 ? '\n' : ''}`).join('---')})\n`);
                 fs.appendFileSync('./test-outcome.txt', content);
 
                 doctorStrains[position] = evaluationChart.getDayStrain(date);
@@ -910,8 +902,8 @@ class MonthlyDuties {
             }
         }
 
-        // Get possible doctor's combinations,
-        // unique and respecting preferred positions in order.
+        // Get unique doctor's combinations
+        // (they respect preferred positions).
         let result = (
             [...new Set(
                 [...new CartesianProduct(...todaysPreferences)]
@@ -933,20 +925,19 @@ class MonthlyDuties {
         // are not included.
         result = result.filter(([action, option]) => action.strain < 10000);
 
-        // Sort combinations by strain. Shuffle them first to avoid
-        // setting same doctors on duty each time, but keep sorted order.
+        // Sort combinations by strain and by uniqueness, prefering uniqueness. 
+        // Shuffle them first to avoid setting patterns.
         shuffle(result);
         result.sort(([actionA, optionA], [actionB, optionB]) =>
             actionB.strain - actionA.strain);
         result.sort(([actionA, optionA], [actionB, optionB]) => {
             if (new Set(optionA.concat(optionB)).size === optionA.concat(optionB).length) {
                 return -1;
-            } else {
-                return 1;
             }
-        })
+            return 1;
+        });
 
-        // Keep only combinations of unique doctors set.
+        // Keep only combinations of unique doctors.
         for (let i = 0; i < result.length-1; i++) {
             const thisOption = result[i][1];
             const nextOption = result[i+1][1];
@@ -956,9 +947,8 @@ class MonthlyDuties {
             }
         }
 
-        // If it's not the last day, make sure each combination
-        // allows for next day to be set.
-        if (date < this.days.length) {
+        // Make sure each combination allows for next day to be set.
+        if (date < this.days.length && !preferences[date + 1].isSet) {
             const nextDayDocs = preferences[date + 1]['all'].filter(d => d.getNumberOfDutiesLeft() > 0);
             result = result.filter(([action, option]) => {
                 const difference = nextDayDocs.filter(d => !option.includes(d));
@@ -968,19 +958,30 @@ class MonthlyDuties {
                 return false;
             });
         }
-        
+        // Make sure each combination allows for previous day to be set.
+        if (date > 1 && !preferences[date - 1].isSet) {
+            const prevDayDocs = preferences[date - 1]['all'].filter(d => d.getNumberOfDutiesLeft() > 0);
+            result = result.filter(([action, option]) => {
+                const difference = prevDayDocs.filter(d => !option.includes(d));
+                if (difference.length >= this.dutyPositions.length) {
+                    return true;
+                }
+                return false;
+            });
+        }
+
         if (!result.length) {
             fs.appendFileSync('./test-outcome.txt', 'There was no combination that would allow for todays or tomorrows duties to be set.\n');
         } else {
             fs.appendFileSync('./test-outcome.txt', `Adding ${result.length} options to frontier:\n ${result.map(elem => `----- ${Object.entries(elem[1]).map(([k, v]) => `${k}-${v.name}`).join(' ')}\n`)}`);
         }
-        
-        // Make sure there is full state in each result element.
+
+        // Make sure there is full state in each resulting element.
         result = result.map(([action, option]) => {
             const state = new Map(prevState);
             const dailyDuties = {};
             for (const position of this.dutyPositions) {
-                const doctor = option[position-1]
+                const doctor = option[position-1];
                 dailyDuties[position] = new Duty(
                     day, doctor, position, strains.get(doctor)[position], null, false);
             }
@@ -990,6 +991,113 @@ class MonthlyDuties {
 
         return result;
     }
+
+    _getNextDay(prefs) {
+        /* Sorts preferences to get day with 
+        least average doctors per position.*/
+
+        const preferences = {...prefs};
+
+        // Remove days with set duties.
+        const dates = Object.keys(preferences).map(d => parseInt(d));
+        for (const date of dates) {
+            if (preferences[date].isSet) {
+                delete preferences[date];
+            }
+        }
+
+        // Throw error if all duties are set.
+        if (Object.values(preferences).every(p => p.isSet === true)) {
+            throw Error('Duties are set - there is no next day!');
+        }
+
+        // Sort preferences.
+        const getAvg = (positions) => {
+            const avg = (
+                Object.entries(positions)
+                    .filter(([k,v]) => this.dutyPositions.includes(parseInt(k)))
+                    .map(([k, v]) => v)
+                    .reduce((prevVal, currVal) => prevVal + currVal.length, 0) 
+                / this.dutyPositions.length
+            );
+            return avg;
+        }
+
+        for (const date of Object.keys(preferences)) {
+            preferences[date].avg = getAvg(preferences[date]);
+        }
+
+        fs.appendFileSync('./test-outcome.txt', '\nPREFERENCES AVGS\n');
+        for (const date of Object.keys(preferences)) {
+            fs.appendFileSync('./test-outcome.txt', `${date}_(${preferences[date].avg.toFixed(2)})  `);
+            date % 10 === 0 && fs.appendFileSync('./test-outcome.txt', '\n');
+        }
+        fs.appendFileSync('./test-outcome.txt', '\n');
+
+        const ordered = (
+            Object.entries(preferences)
+            .sort(([dayA, dataA], [dayB, dataB]) => {
+                return dataA.avg - dataB.avg;
+            })
+            .map(([day, options]) => parseInt(day))
+        );
+
+        fs.appendFileSync('./test-outcome.txt', `Ordered days: ${ordered.join(', ')}\n\n`);
+
+        return ordered[0];
+    }
+
+    _getActualPreferences(state) {
+        /* Returns preferences object with marked set days
+        and filtered out doctors from adjacent set duties. */
+
+        const preferences = {};
+        Object.entries(this.#preferences).forEach(([day, data]) => {
+            preferences[day] = {...data};
+        });
+
+        // Mark set duties' doctors from adjacent days possibilities.
+        // Mark set days.
+
+        for (let date = 1; date <= this.days.length; date++) {
+            // Get current day
+            const day = this.getDay(date);
+
+            // Get current day's set duties' doctors.
+            const doctorsSet = (
+                Object.values(state.get(day))
+                .map(d => d.getDoctor())
+                .filter(doc => doc !== null)
+            );
+
+            // Check if duties are set and mark as set/unset.
+            if (doctorsSet.length === this.dutyPositions.length) {
+                preferences[date].isSet = true;
+            } else {
+                preferences[date].isSet = false;
+                continue;
+            }
+
+            // Remove current day's doctors from previous day's options.
+            if (date > 1) {
+                const prevDocs = preferences[date - 1];
+                for (const position of Object.keys(prevDocs).filter(k => k !== 'isSet')) {
+                    prevDocs[position] = prevDocs[position].filter(d => !doctorsSet.includes(d));
+                }
+            }
+
+            // Remove current day's doctors from next day's options.
+            if (date < this.days.length) {
+                const nextDocs = preferences[date + 1];
+                for (const position of Object.keys(nextDocs).filter(k => k !== 'isSet')) {
+                    nextDocs[position] = nextDocs[position].filter(d => !doctorsSet.includes(d));
+                }
+            }
+        }
+
+        return preferences;
+    }
+
 
     setDuty(dutyData) {
         const doctor = dutyData.getDoctor();
