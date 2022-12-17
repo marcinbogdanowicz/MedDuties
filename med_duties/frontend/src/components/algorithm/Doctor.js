@@ -460,7 +460,7 @@ class Doctor {
         if (!duties) {
             return this.maxNumberOfDuties - this.duties.length;
         }
-        const myDuties = (
+        let myDuties = (
             [...duties.values()]
             .map(elem => Object.values(elem))
             .flat()
@@ -471,8 +471,13 @@ class Doctor {
                 }
                 return false;
             })
+            .map(duty => duty.day.number)
         );
-        return this.maxNumberOfDuties - myDuties.length;
+
+        const thisDutyDates = this.duties.map(d => d.day.number);
+        myDuties = myDuties.filter(date => !thisDutyDates.includes(date));
+
+        return this.maxNumberOfDuties - myDuties.length - thisDutyDates.length;
     }
 
     setStrain(strain) {

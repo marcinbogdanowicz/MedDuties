@@ -490,10 +490,12 @@ class MonthlyDuties {
                             `${combination.join(', ')} dyżury ` +
                             `może przyjąć łącznie ${allDocs.size} ` +
                             `${allDocs.size > 1 ? 'lekarzy' : 'lekarz'} ` +
-                            `(${[...allDocs].map(doc => doc.name).join(', ')}). ` +
-                            `To o ${(len * 2) - allDocs.size} ` +
+                            `(${date}/${this.month}/${this.year}: ` +
+                            `${[...todayDocs].map(doc => doc.name).join(', ')} ` +
+                            `oraz ${date+1}/${this.month}/${this.year}: ` +
+                            `${[...tomorrowDocs].map(doc => doc.name).join(', ')}). ` +
+                            `To łącznie o ${(len * 2) - allDocs.size} ` +
                             `zbyt mało, aby obsadzić dyżury ` +
-                            `na ${combination.length > 1 ? 'tych pozycjach' : 'tej pozycji'} ` +
                             `nie tworząc dubletów.`
                         );
                     }
@@ -522,15 +524,17 @@ class MonthlyDuties {
             );
         if (totalMaxDuties < dutiesInMonth) {
             this._log(`Maksymalna liczba dyżurów akceptowana ` +
-                `łącznie przez wszystkich lekarzy jest niższa ` +
+                `łącznie przez wszystkich lekarzy jest o ` +
+                `${dutiesInMonth - totalMaxDuties} niższa ` +
                 `niż liczba miejsc dyżurowych do obsadzenia ` +
-                `(liczba dni mnożona przez liczbę pozycji dyżurowych)`);
+                `(${dutiesInMonth} - iloczyn dni i ` +
+                `pozycji dyżurowych).`);
             return false;
         }
 
         const wastedDuties = {};
         // Get unique combinations of all lengths of preferred duty positions.
-        const positionsCombinations =this._getCombinations(this.dutyPositions);
+        const positionsCombinations = this._getCombinations(this.dutyPositions);
 
         for (const combination of positionsCombinations) {
             // Get an object with groups as keys
@@ -802,7 +806,7 @@ class MonthlyDuties {
             }
 
             steps++; // TESTING
-            if (steps > 200) { // TESTING
+            if (steps > 50) { // TESTING
 
                 fs.appendFileSync('./test-outcome.txt', 'Breaking!\n');
 
@@ -864,6 +868,7 @@ class MonthlyDuties {
             fs.appendFileSync('./test-outcome.txt', `doctor: ${doctor.name.toUpperCase()}\n`);
 
             const doctorStrains = {};
+
             for (const position of this.dutyPositions) {
                 const evaluationChart = doctor.evaluateDuties(duties, position);
                 if (!evaluationChart) {
@@ -888,18 +893,31 @@ class MonthlyDuties {
             strains.set(doctor, doctorStrains);
         }
 
-        // Prepare list od doctors lists.
+        // Prepare a list of doctors lists.
         // If duty is set on any position, put only this doctor
         // on this position's list.
         const todaysPreferences = [];
         const todaysDuties = this.duties.get(day);
         for (const position of this.dutyPositions) {
             const doctor = todaysDuties[position].getDoctor();
-            if (doctor) {
-                todaysPreferences.push([doctor]);
-            } else {
+            if (!doctor) {
                 todaysPreferences.push(preferences[date][position]);
+                continue;
             }
+
+            todaysPreferences.push([doctor]);
+
+            // Make sure doctor's strain values are stored.
+            const docPosition = position;
+            const docStrains = {};
+            for (const pos of this.dutyPositions) {
+                if (pos === docPosition) {
+                    docStrains[pos] = todaysDuties[position].getStrain()
+                } else {
+                    docStrains[pos] = 10000;
+                }
+            }
+            strains.set(doctor, docStrains);
         }
 
         // Get unique doctor's combinations
