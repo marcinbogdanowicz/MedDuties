@@ -209,7 +209,7 @@ class Doctor {
             const itIsThursday = day.weekday === 3;
             const itIsSaturday = day.weekday === 5;
             const itIsSunday = day.weekday === 6;
-            const itIsWeekend = day.category === 'weekend';
+            const itIsWeekend = [4,5,6].includes(day.weekday);
 
             const dutyImpossible = evaluationChart.getDayStrain(today) >= 10000;
             const iMadeExceptionForToday = this.getExceptions().includes(today);
@@ -297,6 +297,7 @@ class Doctor {
                 // Nobody wants more than two weekends on duty
                 evaluationChart.modifyPoints(today, MODIFIER_MORE_THAN_TWO_WEEKENDS);
             }
+            /*
             if (itIsSaturday && iHaveDutiesOnOneOtherWeekend) {
                 // Aim for two weekends with three duties: fri+sun and sat.
                 evaluationChart.modifyPoints(today, MODIFIER_SATURDAY_IF_ONE_WEEKEND);
@@ -305,7 +306,7 @@ class Doctor {
             if (!itIsWeekend && iDontHaveDutiesOnTwoWeekendsYet) {
                 // Support the team, take at least two weekends!
                 evaluationChart.modifyPoints(today, MODIFIER_LESS_THAN_TWO_WEEKENDS);
-            }
+            }*/
         }
 
         return evaluationChart;
@@ -485,7 +486,7 @@ class Doctor {
     }
 
     getStrain() {
-        return this.strain;
+            return this.strain;
     }
 
     clearDuties(clearUserSetToo=false) {
@@ -662,9 +663,9 @@ class Doctor {
             6: 0,
         };
 
-        myDuties.forEach((duty, i) => {
-            const today = myDutysDates[i];
+        myDuties.forEach(duty => {
             const day = duty.getDay();
+            const today = day.number;
 
             // Compute strain.
             statistics.strain += day.strainPoints;
@@ -688,7 +689,7 @@ class Doctor {
             statistics[day.weekday]++;
 
             // Count weekends and weekend days
-            const itIsWeekend = day.category === 'weekend';
+            const itIsWeekend = [4,5,6].includes(day.weekday);
             if (itIsWeekend) {
                 statistics.weekends.add(day.week);
                 statistics.weekendDays++;
@@ -700,6 +701,8 @@ class Doctor {
                 statistics.holidays++;
             }
         });
+
+        console.log(this.name, statistics.weekends, myDuties);
 
         // Count weekends
         statistics.weekends = statistics.weekends.size;
