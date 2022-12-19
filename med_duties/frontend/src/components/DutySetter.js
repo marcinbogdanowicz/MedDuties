@@ -744,8 +744,8 @@ export default function DutiesSetter() {
         setShowSpinner(true);
         const month = appData.monthlyDuties.month;
         const year = appData.monthlyDuties.year;
-        const duties = (Object.values(appData.monthlyDuties.getDuties())
-            .map(item => [...item.values()])
+        const duties = ([...appData.monthlyDuties.getDuties().values()]
+            .map(item => Object.values(item))
             .flat());
         const data = {
             pk: appData.monthlyDuties.getPk(),

@@ -357,7 +357,6 @@ class MonthlyDutiesSerializer(serializers.ModelSerializer):
         # If so, extract them from validated_data.
         doctors_data = validated_data.get('doctor_data', None)
         if doctors_data:
-            print('There actually is doctor data o_O')
             doctors_data = validated_data.pop('doctor_data')
         duties = validated_data.get('duties', None)
         if duties:
