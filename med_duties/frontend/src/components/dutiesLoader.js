@@ -14,13 +14,19 @@ export default async function dutiesLoader() {
             const userId = tokenParts.user_id;
 
             // Get user's unit pk.
-            var response = await axiosInstance.get('/user/' + userId + '/');
-            const unit = response.data.unit;
+            const userResponse = await axiosInstance.get('/user/' + userId + '/');
+            const unitPk = userResponse.data.unit;
+
+            // Get unit data.
+            const unitResponse = await axiosInstance.get(`/unit/${unitPk}/`);
+            const unit = unitResponse.data;
 
             // Get unit's schedules data and pass it to view.
-            response = await axiosInstance.get('/unit/' + unit.pk + '/duties/');
-            return [unit, response.data];
-            
+            const scheduleResponse = await axiosInstance.get('/unit/' + unitPk + '/duties/');
+            const schedule = scheduleResponse.data;
+
+            return [unit, schedule];
+
         } catch (error) {
             console.log(error);
         }

@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLoaderData, useNavigate } from 'react-router-dom';
 import Form from 'react-bootstrap/Form';
 import ColumnLayout from './ColumnLayout';
-import Tile from './Tile';
+import ScheduleTile from './ScheduleTile';
 import Alert from './Alert';
+import OverlaySpinner from './OverlaySpinner';
 import axiosInstance from '../axiosApi';
-import { range } from './algorithm/utils';
+import { range, getHolidays } from './algorithm/utils';
 import Day from './algorithm/Day';
 
 
@@ -24,12 +25,29 @@ var months = {
     12: 'Grudzień'
 };
 
+var holidays = getHolidays();
+
 export default function Duties() {
     const navigate = useNavigate();
 
-    const [unit, schedules] = useLoaderData();
+    const [unit, schedulesData] = useLoaderData();
+    const [schedules, setSchedules] = useState([]);
     const [showScheduleDetails, setShowScheduleDetails] = useState(false);
-    const [scheduleDetails, setScheduleDetails] = useState(null);
+    const [scheduleDetails, setScheduleDetails] = useState({
+        pk: 0,
+        monthandyear: '0/0',
+        addedDoctors: 0,
+        duties: null,                
+        numberOfDays: 0,
+        weekendDays: 0,
+        holidays: 0,
+        dutyPositions: 0,
+        dutiesSet: 0,
+        dutiesToBeSet: 0,
+        isSet: false,
+        dutiesPerDoctor: 0,
+        doctorData: null
+    });
     const [showNewSchedule, setShowNewSchedule] = useState(false);
     const [newSchedule, setNewSchedule] = useState({
         month: 0,
@@ -38,10 +56,27 @@ export default function Duties() {
         yearMessage: ''
     });
     const [errorMessage, setErrorMessage] = useState('');
+    const [alertData, setAlertData] = useState({
+        show: false,
+        message: '',
+        header: ''
+    });
+    const [showSpinner, setShowSpinner] = useState(false);
+
+    useEffect(() => {
+        const s = schedulesData.map(data => {
+            if (data.monthandyear) {
+                const [month, year] = JSON.parse(data.monthandyear);
+                data.month = month;
+                data.year = year;
+                delete data.monthandyear;
+            }
+        });
+        setSchedules(schedulesData);
+    }, []);
 
     async function getDetails(event) {
         const [month, year] = event.target.innerHTML.split('/');
-        
         // Prevent fetching stored data again.
         if (scheduleDetails) {
             const [currentMonth, currentYear] = scheduleDetails.monthandyear.split('/');
@@ -52,8 +87,12 @@ export default function Duties() {
             }
         }
         try {
-            const response = await axiosInstance.get('/unit/' + unit.pk + '/duties/' + year + '/' + month + '/');
-            setScheduleDetails(response.data);
+            const url = ('/unit/' + unit.pk + '/duties/' + year + '/' + month + '/');
+            const response = await axiosInstance.get(url);
+
+            const data = _getScheduleData(response);
+
+            setScheduleDetails(data);
             setShowNewSchedule(false);
             setShowScheduleDetails(true);
         } catch (error) {
@@ -61,13 +100,56 @@ export default function Duties() {
             setErrorMessage('Błąd pobierania danych.');
         }
     }
+    
+    const _getScheduleData = (response) => {
+        const data = response.data;
+
+        const dutiesToBeSet = data.number_of_days * data.duty_positions;
+        const dutiesPerDoctor = (
+            data.doctor_data.length ? 
+            Math.ceil(dutiesToBeSet / data.doctor_data.length) :
+            '-'
+        );
+        const dutiesSet = data.duties.filter(d => d.doctor !== null).length;
+        const isSet = (
+            dutiesSet === (data.number_of_days * data.duty_positions));
+        let weekendDays = 0;
+        [4,5,6].forEach(weekday => {
+            const firstWeekdayDate = (
+                weekday - data.first_weekday > 0 ?
+                1 + (weekday - data.first_weekday) :
+                (weekday - data.first_weekday) + 8
+            );
+            const weekdayCount = (
+                Math.floor((data.number_of_days - firstWeekdayDate) / 7) + 1);
+            weekendDays += weekdayCount
+        })
+        const [month, year] = data.monthandyear.split('/');
+        const holidaysCount = holidays[year][month].length;
+
+        return {
+            pk: data.pk,
+            monthandyear: data.monthandyear,
+            addedDoctors: data.doctor_data.length,
+            duties: data.duties,                
+            numberOfDays: data.number_of_days,
+            weekendDays: weekendDays,
+            holidays: holidaysCount,
+            dutyPositions: data.duty_positions,
+            dutiesSet: dutiesSet,
+            dutiesToBeSet: dutiesToBeSet,
+            isSet: isSet,
+            dutiesPerDoctor: dutiesPerDoctor,
+            doctorData: data.doctor_data
+        };
+    }
 
     const handleChange = (event) => {
         const name = event.target.name;
-        const value = event.target.value;
+        const value = parseInt(event.target.value);
         setNewSchedule((prevState) => ({
             ...prevState,
-            [name]: [value]
+            [name]: value
         }));
     }
 
@@ -94,7 +176,10 @@ export default function Duties() {
             return;
         }
 
-        // Create schedule
+        // Show spinner.
+        setShowSpinner(true);
+
+        // Create new duties
         const monthLength = new Date(year, month, 0).getDate()
         const duties = [];
         range(1, monthLength+1).forEach(day => {
@@ -102,6 +187,8 @@ export default function Duties() {
                 const d = new Day(year, month, day);
                 duties.push({
                     day: d.number,
+                    weekday: d.weekday,
+                    week: d.week,
                     position: position,
                     doctor: null,
                     strain_points: d.strainPoints,
@@ -109,16 +196,27 @@ export default function Duties() {
                 });
             });
         })
+        // Prepare schedule data
         const data = {
             monthandyear: `${month}/${year}`,
             duties: duties
         }
+        // Create schedule
         const url = `/unit/${unit.pk}/duties/`;
         try {
-            await axiosInstance.post(url, data);
-            navigate(`/duties/${year}/${month}/`);
+            const response = await axiosInstance.post(url, data);
+            const [month, year] = response.data.monthandyear.split('/');
+            const newSchedule = {month: month, year: year, pk: response.data.pk};
+            const newSchedules = [...schedules, newSchedule];
+            const newDetails = _getScheduleData(response);
+            setSchedules(newSchedules);
+            setScheduleDetails(newDetails);
+            setShowNewSchedule(false);
+            setShowScheduleDetails(true);
+            setShowSpinner(false);
         } catch (error) {
             console.log(error);
+            setShowSpinner(false);
             setErrorMessage('Nie udało się utworzyć grafiku.');
         }
     }
@@ -136,11 +234,84 @@ export default function Duties() {
         setShowScheduleDetails(false);
     }
 
+    const removeSchedule = () => {
+        const message = (
+            <div>
+                <p>Próbujesz <strong>usunąć grafik</strong>. Wszystkie ustawienia
+                tego grafiku, w tym ułożone dyżury i preferencje lekarzy, 
+                zostaną usunięte.<br />
+                Czy chcesz kontynuować?</p>
+                <div>
+                    <button 
+                        className='btn btn-warning'
+                        onClick={_remove}
+                    >
+                        Usuń
+                    </button>
+                    <button 
+                        className='btn btn-success ms-4' 
+                        onClick={closeAlert}
+                    >
+                        Anuluj
+                    </button>
+                </div>
+            </div>
+        );
+        setAlertData({
+            show: true,
+            message: message,
+            header: "Usuwasz grafik!"
+        });
+    }
+
+    const _remove = async () => {
+        const pk = scheduleDetails.pk;
+        const [month, year] = scheduleDetails.monthandyear.split('/');
+
+        try {
+            // Remove schedule from database.
+            const url = `/unit/${unit.pk}/duties/${year}/${month}/`;
+            await axiosInstance.delete(url, {pk: pk});
+
+            // Remove from state
+            const newSchedules = schedules.filter(schedule => schedule.pk !== pk);
+            setSchedules(newSchedules);
+            setShowScheduleDetails(false);
+            setScheduleDetails({
+                pk: 0,
+                monthandyear: '0/0',
+                addedDoctors: 0,
+                duties: null,                
+                numberOfDays: 0,
+                weekendDays: 0,
+                holidays: 0,
+                dutyPositions: 0,
+                dutiesSet: 0,
+                dutiesToBeSet: 0,
+                isSet: false,
+                dutiesPerDoctor: 0,
+                doctorData: null
+            });
+        } catch (error) {
+            console.log(error);
+            setErrorMessage('Nie udało się usunąć grafiku z bazy danych.')
+        }
+    }
+
+    const closeAlert = () => {
+        setAlertData((prevState) => ({
+            ...prevState,
+            show: false
+        }));
+    }
+
     const table = (
         schedules
         .sort((sA, sB) => {
-            const [monthA, yearA] = JSON.parse(sA.monthandyear);
-            const [monthB, yearB] = JSON.parse(sB.monthandyear);
+            const monthA = sA.month;
+            const yearA = sA.year;
+            const monthB = sB.month;
+            const yearB = sB.year;
             if (yearA !== yearB) {
                 return (yearA - yearB);
             } else {
@@ -148,72 +319,162 @@ export default function Duties() {
             }
         })
         .map(item => {
-            const [month, year] = JSON.parse(item.monthandyear);
-            return <Tile key={item.pk} onClick={async (e) => await getDetails(e)} addedClass="bg-info fw-bolder fs-2 text-white">{month + '/' + year}</Tile>
+            const month = item.month;
+            const year = item.year;
+            return (
+                <ScheduleTile 
+                    key={item.pk} 
+                    onClick={async (e) => await getDetails(e)} 
+                    variant={"normal"}
+                >{month + '/' + year}</ScheduleTile>
+            );
         })
+        .reverse()
     );
     table.unshift(
-        <Tile key={0} addedClass="bg-primary fw-bolder fs-1 text-white" onClick={changeToNew}>+</Tile>
+        <ScheduleTile 
+            key={0} 
+            variant={"add"}
+            onClick={changeToNew}
+        >
+            +
+        </ScheduleTile>
+    );
+    
+    const scheduleDetailsView = (
+        <React.Fragment>
+            <h5>Grafik na { scheduleDetails.monthandyear }</h5>
+            <hr className="mt-0 mb-4 hr-bold" />
+            <p className="mb-4">Grafik <b>{ scheduleDetails.isSet ? 'jest' : 'nie jest' }</b> ułożony.</p>
+            <h6><strong>Statystyki</strong></h6>
+            <hr className="m-1" />
+            <table className="left-col-detail-table">
+                <tbody>
+                    <tr>
+                        <td>Liczba dni</td>
+                        <td>{ scheduleDetails.numberOfDays }</td>
+                    </tr>
+                    <tr>
+                        <td>Dni pt. - nd.</td>
+                        <td>{ scheduleDetails.weekendDays }</td>
+                    </tr>
+                    <tr>
+                        <td>Święta i dł.week.</td>
+                        <td>{ scheduleDetails.holidays }</td>
+                    </tr>
+                    <tr>
+                        <td>Dodani lekarze</td>
+                        <td>{ scheduleDetails.addedDoctors }</td>
+                    </tr>
+                    <tr>
+                        <td>Dyżury na lekarza</td>
+                        <td>{ scheduleDetails.dutiesPerDoctor }</td>
+                    </tr>
+                    <tr>
+                        <td>Lekarzy na dyżur</td>
+                        <td>{ scheduleDetails.dutyPositions }</td>
+                    </tr>
+                    <tr>
+                        <td>Dyżury łącznie</td>
+                        <td>{ scheduleDetails.dutiesToBeSet }</td>
+                    </tr>
+                    <tr>
+                        <td>Dyżury obsadzone</td>
+                        <td>{ scheduleDetails.dutiesSet }</td>
+                    </tr>
+                    <tr>
+                        <td>Dyżury nieobsadzone</td>
+                        <td>{ scheduleDetails.dutiesToBeSet - scheduleDetails.dutiesSet }</td>
+                    </tr>
+                </tbody>
+            </table>
+            <hr className="mb-4" />
+            <div className="d-flex justify-content-between">
+                <button 
+                    onClick={() => {
+                        const url = (`/duties/${scheduleDetails.monthandyear.split('/')[1]}` +
+                            `/${scheduleDetails.monthandyear.split('/')[0]}/`);
+                        navigate(url)}} 
+                    className="btn btn-primary mb-3 w-45"
+                >
+                    Otwórz
+                </button>
+                <button 
+                    onClick={removeSchedule} 
+                    className="btn btn-light border mb-3 w-45"
+                >
+                    Usuń
+                </button>
+            </div>
+            {
+                alertData.show &&
+                <Alert 
+                    header={alertData.header}
+                    variant="warning"
+                    dismiss={closeAlert}
+                >
+                    {alertData.message}
+                </Alert>
+            }
+        </React.Fragment>
+    );
+
+    const newScheduleView = (
+        <Form onSubmit={handleSubmit} >
+            <h4 className="mb-4">Dodaj grafik</h4>
+            <Form.Group className="mb-4">
+                <Form.Select name="year" value={newSchedule.year} onChange={handleChange}>
+                    <option disabled value={0}>Wybierz rok</option>
+                    {
+                        range(2022,2033).map((year, i) => {
+                            return <option key={`year-${i}`} value={year}>{year}</option>;
+                        })
+                    }
+                </Form.Select>
+            </Form.Group>
+            <Form.Group className="mb-4">
+                <Form.Select name="month" value={newSchedule.month} onChange={handleChange} disabled={newSchedule.year === 0}>
+                    <option disabled value={0}>Wybierz miesiąc</option>
+                    {
+                        newSchedule.year !== 0 &&
+                        range(1,13).map((month, i) => {
+                            const disabled = schedules.find(s => (s.year === newSchedule.year && s.month === month));
+                            console.log(newSchedule.year, month, disabled);
+                            return <option key={`month-${i}`} value={month} disabled={disabled}>{month}. {months[month]} {disabled ? '(istnieje)' : ''}</option>;
+                        })
+                    }
+                </Form.Select>
+            </Form.Group>
+            <Form.Group className="mb-4">
+                <Form.Control type="submit" value="Dodaj" className="btn btn-primary" />
+            </Form.Group>
+        </Form>
     );
 
     const rightCol = (
-        <div className="d-flex flex-wrap">
+        <div className="tile-table-flex tile-table">
             {table}
         </div>
     );
 
     const leftCol = (
-            <div className="bg-warning left-col d-flex align-items-center justify-content-center">
-                <div className="w-75 p-4 m-5 bg-light">
+            <div className="left-col d-flex justify-content-center">
+                <div className="m-5 w-100">
                     {
-                        showScheduleDetails && 
-                        <div>
-                            <h4>Grafik na { scheduleDetails.monthandyear }</h4>
-                            <hr />
-                            <p>Grafik <b>{ scheduleDetails.duties.filter(d => d.doctor !== null).length === (scheduleDetails.number_of_days * scheduleDetails.duty_positions) ? 'jest' : 'nie jest' }</b> ułożony.</p>
-                            <hr />
-                            <div>
-                                <button onClick={() => navigate('/duties/' + scheduleDetails.monthandyear.split('/')[1] + '/' + scheduleDetails.monthandyear.split('/')[0] + '/')} className="btn btn-primary mb-3 w-50">Otwórz</button>
-                            </div>
-                        </div>
+                        showScheduleDetails && scheduleDetailsView                        
                     }
                     {
-                        showNewSchedule &&
-                        <Form onSubmit={handleSubmit} >
-                            <h4 className="mb-4">Dodaj grafik</h4>
-                            <Form.Group className="mb-4">
-                                <Form.Select name="month" value={newSchedule.month} onChange={handleChange}>
-                                    <option disabled value={0}>Wybierz miesiąc</option>
-                                    {
-                                        range(1,13).map((month, i) => {
-                                            return <option key={`month-${i}`} value={month}>{month}. {months[month]}</option>;
-                                        })
-                                    }
-                                </Form.Select>
-                            </Form.Group>
-                            <Form.Group className="mb-4">
-                                <Form.Select name="year" value={newSchedule.year} onChange={handleChange}>
-                                    <option disabled value={0}>Wybierz rok</option>
-                                    {
-                                        range(2022,2033).map((year, i) => {
-                                            return <option key={`year-${i}`} value={year}>{year}</option>;
-                                        })
-                                    }
-                                </Form.Select>
-                            </Form.Group>
-                            <Form.Group className="mb-4">
-                                <Form.Control type="submit" value="Utwórz" className="btn btn-primary" />
-                            </Form.Group>
-                        </Form>
+                        showNewSchedule && newScheduleView
                     }
                     {
                         (!showNewSchedule && !showScheduleDetails) &&
-                        <h4>Wybierz grafik by wyświetlić szczegóły</h4>
+                        <h5>Wybierz grafik by wyświetlić szczegóły</h5>
                     }
                 </div>
             { errorMessage && <Alert>{errorMessage}</Alert> }
+            <OverlaySpinner show={showSpinner} />
         </div>
     );
 
-    return <ColumnLayout leftCol={leftCol} rightCol={rightCol} logoPrimary={"Grafiki dyżurów"}/>
+    return <ColumnLayout leftCol={leftCol} rightCol={rightCol} logoPrimary={unit.name} logoSecondary={"Grafiki dyżurów"}/>
 }

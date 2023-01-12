@@ -1,8 +1,8 @@
 import React from 'react';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
-import ScheduleTile from './ScheduleTile';
-import ScheduleTileInactive from './ScheduleTileInactive';
+import DutyTile from './DutyTile';
+import DutyTileInactive from './DutyTileInactive';
 import Day from './algorithm/Day';
 import Duty from './algorithm/Duty';
 import { getWeekday } from './algorithm/utils';
@@ -36,6 +36,7 @@ export default function Schedule(props) {
         const month = parseInt(monthlyDuties.getMonth());
         const year = parseInt(monthlyDuties.getYear());
         const positions = appData.unit.dutyPositions;
+        const preferences = appData.monthlyDuties.getPreferences();
 
         // Add current month's rows.
         for (let i = 1; i < monthlyDuties.getDays().length + 1; i++) {
@@ -44,13 +45,13 @@ export default function Schedule(props) {
             positions.forEach(position => {
                 const duty = monthlyDuties.getDuty(i, position);
                 rowContent.push(
-                    <ScheduleTile
+                    <DutyTile
                         key={`${i}-${position}`}
                         setDoctorOnDuty={setDoctorOnDuty}
                         highlight={highlight}
                         toggleHighlight={toggleHighlight}
                         duty={duty}
-                        doctors={appData.doctors}
+                        doctors={preferences[i][position]}
                     />
                 );
             });
@@ -95,7 +96,7 @@ export default function Schedule(props) {
                 }
                 // Create tile.
                 rowContent.push(
-                    <ScheduleTileInactive
+                    <DutyTileInactive
                         key={`prev-${currDay}-${position}`}
                         highlight={highlight}
                         toggleHighlight={toggleHighlight}

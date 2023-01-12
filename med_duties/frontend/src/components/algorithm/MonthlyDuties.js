@@ -19,7 +19,7 @@ class MonthlyDuties {
     month;
     year;
     doctors;
-    #preferences;
+    preferences;
     dutyPositions;
     duties;
     prevMonthDuties;
@@ -34,7 +34,7 @@ class MonthlyDuties {
         this.month = month;
         this.year = year;
         this.doctors = unit.doctors;
-        this.#preferences = {};
+        this.preferences = {};
         this.dutyPositions = unit.dutyPositions;
 
         this.duties = new Map();
@@ -72,7 +72,8 @@ class MonthlyDuties {
         this.getDuties = this.getDuties.bind(this);
         this.whoIsOnDuty = this.whoIsOnDuty.bind(this);
 
-        this._updatePreferences = this._updatePreferences.bind(this);
+        this.updatePreferences = this.updatePreferences.bind(this);
+        this.getPreferences = this.getPreferences.bind(this);
         this._removeDoctorDuties = this._removeDoctorDuties.bind(this);
         this._assignAndPostCheck = this._assignAndPostCheck.bind(this);
         this._isThereEnoughDoctors = this._isThereEnoughDoctors.bind(this);
@@ -220,7 +221,7 @@ class MonthlyDuties {
         return this.nextMonthDuties;
     }
 
-    _updatePreferences() {
+    updatePreferences(includeDuties=false) {
         const preferences = {};
 
         this.days.forEach(day => {
@@ -253,7 +254,7 @@ class MonthlyDuties {
                             preferences[date][position].filter(d => d !== doctor));
                         continue;
                     }
-                    if (dutyOnAdjacentDay) {
+                    if (dutyOnAdjacentDay && includeDuties) {
                         preferences[date][position] = (
                             preferences[date][position].filter(d => d !== doctor));
                         continue;
@@ -284,9 +285,13 @@ class MonthlyDuties {
             )];
         }
 
-        this.#preferences = preferences;
+        this.preferences = preferences;
 
         return preferences;
+    }
+
+    getPreferences() {
+        return this.preferences;
     }
 
     performChecks() {
@@ -435,7 +440,7 @@ class MonthlyDuties {
     }
 
     _checkByDay() {
-        this._updatePreferences();
+        this.updatePreferences(true);
         let errors = [];
 
         for (let date = 1; date < this.days.length; date++) {
@@ -454,7 +459,7 @@ class MonthlyDuties {
     }
 
     _checkDayPair(date) {
-        const preferences = this.#preferences
+        const preferences = this.preferences
 
         // Create errors object.
         const errors = new Map();
@@ -515,7 +520,7 @@ class MonthlyDuties {
     }
 
     _checkDay(date) {
-        const preferences = this.#preferences;
+        const preferences = this.preferences;
 
         // Create error list.
         const errors = [];
@@ -725,13 +730,16 @@ class MonthlyDuties {
         // Perform checks.
         const [canBeSet, log] = this.performChecks();
         if (!canBeSet) {
-            return [false, [], log];
+            return [false, false, log];
         }
 
         // Run assignment.
-        this._assignAndPostCheck();
+        const setAllDuties = this._assignAndPostCheck();
 
-        return [true, this.duties, ['Dyżury zostały ułożone.']];
+        if (setAllDuties) {
+            return [true, true, ['Dyżury zostały ułożone.']];
+        }
+        return [true, false, ['Nie udało się ułożyć wszystkich dyżurów.']];
     }
 
     _assignAndPostCheck() {
@@ -741,9 +749,10 @@ class MonthlyDuties {
         try {
             this._checkForMissingDuties();
             this._checkForForbiddenDuties();
-
+            return true;
         } catch (error) {
             console.log(error.message);
+            return false;
         }
 
     }
@@ -793,7 +802,7 @@ class MonthlyDuties {
 
     _assignDuties() {
         // Get doctors, who can take each duty on each day.
-        this._updatePreferences();
+        this.updatePreferences(true);
 
         // Initialize frontier.
         const initState = new Map();
@@ -804,16 +813,17 @@ class MonthlyDuties {
             }
             initState.set(day, dailyDuties);
         }
-        const initAction = {day: 0, strain: 0};
-        const initNode = new Node(initState, null, initAction);
+        const initMeta = {daysSet: 0, totalStrain: 0, addedStrain: 0, addedDoctors: []};
+        const initNode = new Node(initState, null, initMeta);
         const frontier = new StackFrontier();
         frontier.addToFront(initNode);
 
         let steps = 0;
+        let best = null;
 
         // Keep looping until all duties are filled.
         while (true) {
-            console.log(steps);     // TESTING
+            console.log(`Steps: ${steps}. Frontier: ${frontier.frontier.length}`);     // TESTING
 
             // If frontier is empty, there is no solution.
             if (frontier.empty()) {
@@ -829,22 +839,24 @@ class MonthlyDuties {
                 break;
             }
 
+            // If node is best we got, save it.
+            if (this._isBetter(node, best)) {
+                best = node;
+            }
+
             // Expand current node and add new options to frontier.
-            // (Streak search)
-            this._options(node.state, node.action).forEach(([action, state], index) => {
-                if (action !== null && state !== null) {
-                    const child = new Node(state, node, action);
+            this._options(node.state, node.metadata).forEach(([metadata, state], index) => {
+                if (metadata !== null && state !== null) {
+                    const child = new Node(state, node, metadata);
                     frontier.addToFront(child);
-                    /*if (index === 0) {
-                        frontier.addToFront(child);
-                    } else {
-                        frontier.addToBack(child);
-                    }*/
                 }
             });
 
             steps++;
             if (steps > 1000) {
+                // Assign best combination achieved and set it.
+                this._assign(best.state);
+                console.log(this.getStatistics());
                 break;
             }
         }
@@ -864,18 +876,35 @@ class MonthlyDuties {
     }
 
     _assign(state) {
-        this.clearDuties();
+        this.clearDuties(true);
         for (const day of this.days) {
             for (const position of this.dutyPositions) {
                 const data = state.get(day)[position];
-                const duty = this.duties.get(day)[position];
-                duty.isUserSet() && data.userSet(true);
-                this.setDuty(data);
+                if (data.getDoctor() !== null) {
+                    const duty = this.duties.get(day)[position];
+                    duty.isUserSet() && data.userSet(true);
+                    this.setDuty(data);
+                }
             }
         }
     }
 
-    _options(prevState, prevAction) {
+    _isBetter(node, best) {
+        if (!best) {
+            return true;
+        }
+        const daysSet = node.metadata.daysSet;
+        const strain = node.metadata.totalStrain;
+        const bestDaysSet = best.metadata.daysSet;
+        const bestStrain = best.metadata.totalStrain;
+        if (daysSet > bestDaysSet) {
+            return true;
+        } else if (daysSet === bestDaysSet && strain < bestStrain) {
+            return true;
+        }
+    }
+
+    _options(prevState, prevMetadata) {
         const duties = prevState;
         const preferences = this._getActualPreferences(duties);
         const date = this._getNextDay(preferences);
@@ -885,7 +914,7 @@ class MonthlyDuties {
             return [[null, null]];
         }
 
-        const day = this.getDay(date);        
+        const day = this.getDay(date);
         const doctors = preferences[date]['all'];
 
         // Get each doctor's strain for current day.
@@ -939,19 +968,24 @@ class MonthlyDuties {
             )]
         );
 
-        // Add sum of strains to each combination.
-        result = result.map(comb => {
+        // Add sum of strains to each combination. Store it with metadata.
+        result = result.map(option => {
             let strain = 0;
-            comb.forEach((doctor, i) => {
+            option.forEach((doctor, i) => {
                 const position = i+1;
                 strain += strains.get(doctor)[position];
             });
-            return [{day: date, strain: strain}, comb];
+            const metadata = {...prevMetadata};
+            metadata.daysSet++;
+            metadata.totalStrain += strain;
+            metadata.addedStrain = strain;
+            metadata.addedDoctors = option;
+            return [metadata, option];
         });
 
         // Make sure strains higher than 10000 (at least one impossible duty)
         // are not included.
-        result = result.filter(([action, option]) => action.strain < 10000);
+        result = result.filter(([metadata, option]) => metadata.addedStrain < 10000);
 
         // Keep only combinations of unique doctors.
         for (let i = 0; i < result.length-1; i++) {
@@ -966,7 +1000,7 @@ class MonthlyDuties {
         // Make sure each combination allows for next day to be set.
         if (date < this.days.length && !preferences[date + 1].isSet) {
             const nextDayDocs = preferences[date + 1]['all'].filter(d => d.getNumberOfDutiesLeft() > 0);
-            result = result.filter(([action, option]) => {
+            result = result.filter(([metadata, option]) => {
                 const difference = nextDayDocs.filter(d => !option.includes(d));
                 if (difference.length >= this.dutyPositions.length) {
                     return true;
@@ -977,7 +1011,7 @@ class MonthlyDuties {
         // Make sure each combination allows for previous day to be set.
         if (date > 1 && !preferences[date - 1].isSet) {
             const prevDayDocs = preferences[date - 1]['all'].filter(d => d.getNumberOfDutiesLeft() > 0);
-            result = result.filter(([action, option]) => {
+            result = result.filter(([metadata, option]) => {
                 const difference = prevDayDocs.filter(d => !option.includes(d));
                 if (difference.length >= this.dutyPositions.length) {
                     return true;
@@ -987,7 +1021,7 @@ class MonthlyDuties {
         }
 
         // Make sure there is full state in each resulting element.
-        result = result.map(([action, option]) => {
+        result = result.map(([metadata, option]) => {
             const state = new Map(prevState);
             const dailyDuties = {};
             for (const position of this.dutyPositions) {
@@ -996,32 +1030,37 @@ class MonthlyDuties {
                     day, doctor, position, strains.get(doctor)[position], null, false);
             }
             state.set(day, dailyDuties);
-            action.option = option;
-            return [action, state];
+            return [metadata, state];
         });
 
-        // Sort combinations by strain and by uniqueness, prefering uniqueness. 
+        // Sort combinations by strain, max duties and 
+        // - on weekends - on number of weekend duties 
+        // after the option is chosen, prefering the latter. 
         // Shuffle them first to avoid setting patterns.
         shuffle(result);
-        result.sort(([actionA, stateA], [actionB, stateB]) =>
-            actionB.strain - actionA.strain);
-        result.sort(([actionA, stateA], [actionB, stateB]) => {
-            const dutiesA = actionA.option.reduce((prevVal, currVal) => prevVal + currVal.getNumberOfDutiesLeft(duties), 0);
-            const dutiesB = actionB.option.reduce((prevVal, currVal) => prevVal + currVal.getNumberOfDutiesLeft(duties), 0);
+        result.sort(([metadataA, stateA], [metadataB, stateB]) =>
+            metadataB.addedStrain - metadataA.addedStrain);
+        result.sort(([metadataA, stateA], [metadataB, stateB]) => {
+            const dutiesA = metadataA.addedDoctors.reduce((prevVal, currVal) => prevVal + currVal.getNumberOfDutiesLeft(duties), 0);
+            const dutiesB = metadataB.addedDoctors.reduce((prevVal, currVal) => prevVal + currVal.getNumberOfDutiesLeft(duties), 0);
             return dutiesA - dutiesB;
         });
-        result.sort(([actionA, stateA], [actionB, stateB]) => {
-            const maxDutiesA = actionA.option.reduce((prevVal, currVal) => prevVal + currVal.getMaxNumberOfDuties(), 0);
-            const maxDutiesB = actionB.option.reduce((prevVal, currVal) => prevVal + currVal.getMaxNumberOfDuties(), 0);
+        result.sort(([metadataA, stateA], [metadataB, stateB]) => {
+            // Ignoring differences above 12 max duties helps prevent imbalance.
+            const treshold = this.dutyPositions.length * 12;
+            let maxDutiesA = metadataA.addedDoctors.reduce((prevVal, currVal) => prevVal + currVal.getMaxNumberOfDuties(), 0);
+            maxDutiesA > treshold && (maxDutiesA = treshold);
+            let maxDutiesB = metadataB.addedDoctors.reduce((prevVal, currVal) => prevVal + currVal.getMaxNumberOfDuties(), 0);
+            maxDutiesB > treshold && (maxDutiesB = treshold);
             return maxDutiesB - maxDutiesA;
         });
         if ([4,5,6].includes(day.weekday)) {
-            result.sort(([actionA, stateA], [actionB, stateB]) => {
-                const weekendsA = actionA.option.reduce((prevVal, currVal) => prevVal + currVal.getWeekendsOnDuty(stateA).length, 0);
-                const weekendsB = actionB.option.reduce((prevVal, currVal) => prevVal + currVal.getWeekendsOnDuty(stateB).length, 0);
+            result.sort(([metadataA, stateA], [metadataB, stateB]) => {
+                const weekendsA = metadataA.addedDoctors.reduce((prevVal, currVal) => prevVal + currVal.getWeekendsOnDuty(stateA).length, 0);
+                const weekendsB = metadataB.addedDoctors.reduce((prevVal, currVal) => prevVal + currVal.getWeekendsOnDuty(stateB).length, 0);
                 return weekendsB - weekendsA;
             });
-        }   
+        }
 
         return result;
     }
@@ -1077,7 +1116,7 @@ class MonthlyDuties {
         and filtered out doctors from adjacent set duties. */
 
         const preferences = {};
-        Object.entries(this.#preferences).forEach(([day, data]) => {
+        Object.entries(this.preferences).forEach(([day, data]) => {
             preferences[day] = {...data};
         });
 
@@ -1128,6 +1167,9 @@ class MonthlyDuties {
         const position = dutyData.getPosition();
         const day = this.getDay(dutyData.getDay().number);
         const duty = this.duties.get(day)[position];
+        if (duty.getDoctor() === dutyData.getDoctor()) {
+            return;
+        }
         duty.copy(dutyData);
         doctor.setDuty(duty);
         doctor.setStrain(dutyData.getStrain());
@@ -1220,7 +1262,7 @@ class MonthlyDuties {
         // Choose doctors who prefer more than 3 weekdays.
         // Those who prefer less have automatically lowered max number
         // of duties to match number of available days.
-        const doctors = this.doctors.filter(doctor => {
+        /*const doctors = this.doctors.filter(doctor => {
             const preferredWeekdays = doctor.getPreferredWeekdays();
             const maxDuties = doctor.getMaxNumberOfDuties();
             if (preferredWeekdays.length > 3 && maxDuties < 15 && !doctor.isLocked()) {
@@ -1240,15 +1282,15 @@ class MonthlyDuties {
 
             const maxDuties = chosenDoctor.getMaxNumberOfDuties();
             chosenDoctor.setMaxNumberOfDuties(maxDuties+1);
-        } else {
+        } else {*/
             for (const doctor of this.doctors) {
                 const maxDuties = doctor.getMaxNumberOfDuties();
-                if (doctor.isLocked() || maxDuties >= 15) {
+                if (doctor.isLocked() || maxDuties >= 16) {
                     continue;
                 }
                 doctor.setMaxNumberOfDuties(maxDuties+1);
             }
-        }
+        //}
     }
 
     _addAcceptedWeekdays() {
@@ -1431,7 +1473,7 @@ class MonthlyDuties {
                 const value = entry[1];
                 if (name !== 'name') {
                     prev[name] += value;
-                }                
+                }
             });
             return prev;
         },{
@@ -1458,12 +1500,12 @@ class MonthlyDuties {
 class Node {
     state;
     parent;
-    action;
+    metadata;
 
-    constructor(state, parent, action) {
+    constructor(state, parent, metadata) {
         this.state = state;
         this.parent = parent;
-        this.action = action;
+        this.metadata = metadata;
     }
 }
 

@@ -5,6 +5,7 @@ import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import ConflictModal from './ConflictModal';
+import WithTooltip from './WithTooltip';
 import ColumnLayout from './ColumnLayout';
 import OverlaySpinner from './OverlaySpinner';
 import Alert from './Alert';
@@ -20,6 +21,7 @@ import Duty from './algorithm/Duty';
 import MonthlyDuties from './algorithm/MonthlyDuties';
 import Unit from './algorithm/Unit';
 import axiosInstance from '../axiosApi';
+import * as xlsx from 'xlsx';
 
 
 var months = {
@@ -35,6 +37,12 @@ var months = {
     10: 'Październik',
     11: 'Listopad',
     12: 'Grudzień'
+};
+
+var positionNames = {
+    1: 'PIERWSZY',
+    2: 'DRUGI',
+    3: 'TRZECI'
 };
 
 export default function DutiesSetter() {
@@ -195,6 +203,9 @@ export default function DutiesSetter() {
         );
         monthlyDuties.addNextMonthDuties(nextMonthDuties);
 
+        // Create first preferences object.
+        monthlyDuties.updatePreferences();
+
         // Add all the above to state.
         setAppData({
             unit: unit,
@@ -208,7 +219,7 @@ export default function DutiesSetter() {
         // Cancel previous error messages.
         dismissAlerts();
 
-        const [success, duties, logData] = appData.monthlyDuties.setDuties();
+        const [success, allSet, logData] = appData.monthlyDuties.setDuties();
         
         // Transform raw data into list items.
         const logItems = transformLogData(logData);
@@ -216,45 +227,29 @@ export default function DutiesSetter() {
         // Save response and log in appropriate state.
         if (success) {
             // Create log, if there are any items.
-            if (logData.length > 0) {
-                logItems.unshift(
-                    <li key={0}>
-                        PODCZAS UKŁADANIA DYŻURÓW WPROWADZONO ZMIANY... <br />
-                        ...w preferencjach lekarzy. Były one konieczne, aby dyżury
-                        mogły być ułożone. Zmiany nie zostały zapisane na serwerze,
-                        ale są widoczne w ustawieniach po lewej stronie.
-                        Możesz cofnąć lub zapisać wszystkie zmiany lub
-                        zadecydować pojedyńczo.
-                        <br />
-                        <span>
-                            <span 
-                                className="link" 
-                                onClick={reverseAllModifications}
-                            >
-                                [[Cofnij wszystkie]]
-                            </span>
-                            <span 
-                                className="link" 
-                                onClick={saveAllModifications}
-                            > 
-                                [[Zapisz wszystkie]]
-                            </span>
-                        </span>
-                    </li>
-                );
-                const log = {
-                    items: logItems, 
-                    heading: 'Zmiany wprowadzone podczas układania dyżurów'
-                };
-                const info = <p>Dyżury zostały ułożone, jednak <strong>konieczne było
-                    wprowadzenie zmian</strong> w ustawieniach lekarzy.<br/><br/>
-                    Wyświetl <strong>log</strong>, by zobaczyć szczegółowe informacje.</p>;
+            const log = {
+                items: logItems,
+                heading: 'Log'
+            };
+            if (allSet) {
+                const info = <p>Dyżury zostały ułożone.<br />
+                    Pamiętaj, żeby <strong>zapisać</strong> je przed wyjściem.</p>
                 setMessages((prevData) => ({
                     ...prevData,
                     log: log,
                     info: info
                 }));
+            } else {
+                const settingError = 'Nie udało się ułożyć wszystkich dyżurów.';
+                setMessages((prevData) => ({
+                    ...prevData,
+                    log: log,
+                    settingError: settingError
+                }));
             }
+            // Update preferences.
+            appData.monthlyDuties.updatePreferences();
+
             // Update element by reloading state.
             setAppData((prevData) => ({...prevData}));
 
@@ -282,41 +277,9 @@ export default function DutiesSetter() {
 
     const transformLogData = (logData) => {
         const logItems = [];
-        if (logData.length > 0) {
-            const codeScheme = /^\[[A-Z]{2,3}-\d+\]/;
-            logData.forEach((item, idx) => {
-                const key = idx + 1;
-                var elem;
-                if (item.match(codeScheme)) {
-                    const contentScheme = /(?<=\[.+\]).+/g;
-                    const content = item.match(contentScheme)[0];
-                    const code = item.match(codeScheme)[0];
-                    elem = (
-                        <li key={key}>
-                            {content}
-                            <span>
-                                <span 
-                                    className="link" 
-                                    onClick={(e) => reverseDoctorModification(code, e)}
-                                >
-                                    [[Cofnij]]
-                                </span>
-                                <span 
-                                    className="link" 
-                                    onClick={(e) => saveDoctorModification(code, e)}
-                                > 
-                                    [[Zapisz]]
-                                </span>
-                            </span> 
-                        </li>
-                    );
-                }
-                 else {
-                    elem = <li key={key}>{item}</li>;
-                }
-                logItems.push(elem);
-            });
-        }
+        logData.forEach((item, i) => {
+            logItems.push(<li key={i+1}>{item}</li>);
+        });
         return logItems;
     }
 
@@ -366,6 +329,7 @@ export default function DutiesSetter() {
             }
         }
         appData.monthlyDuties.changeDoctor(duty, doctor, userSet);
+        appData.monthlyDuties.updatePreferences();
         setAppData((prevData) => ({...prevData}));
         updateStatistics();
     }
@@ -386,14 +350,6 @@ export default function DutiesSetter() {
     const updateStatistics = () => {
         const stats = appData.monthlyDuties.getStatistics();
         setStatistics(stats);
-    }
-
-    const toggleHighlight = (doctor) => {
-        if (highlight === doctor) {
-            setHighlight('');
-        } else if (doctor) {
-            setHighlight(doctor);
-        }
     }
 
     const updateDoctor = async (data) => {
@@ -449,7 +405,11 @@ export default function DutiesSetter() {
                     preferred_positions: data.preferredPositions.join(' '),
                     locked: data.locked,
                 });
-            }            
+            }
+            // Update preferences.
+            appData.monthlyDuties.updatePreferences();
+            // Refresh.
+            refreshState();
         } catch (error) {
             console.log(error);
             const generalError = ("Błąd aktualizacji bazy danych. Zmienione dane " +
@@ -494,9 +454,12 @@ export default function DutiesSetter() {
         }
 
         event.target.parentElement.innerHTML = ' [[Cofnięto]]';
+
+        // Update preferences.
+        appData.monthlyDuties.updatePreferences();
        
         // Referesh doctor forms by refreshing state.
-        setAppData((prevState) => ({...prevState}));
+        refreshState();
     }
 
     const saveDoctorModification = async (code, event) => {
@@ -525,7 +488,8 @@ export default function DutiesSetter() {
                 `/settings/${doctor.getSettingsPk()}/`);
             await axiosInstance.patch(url, data);
             event.target.parentElement.innerHTML = ' [[Zapisano]]';
-            setAppData((prevState) => ({...prevState}));
+            appData.monthlyDuties.updatePreferences();
+            refreshState();
         } catch (error) {
             console.log(error);
             const generalError = ("Błąd aktualizacji bazy danych. Zmienione dane " +
@@ -543,8 +507,10 @@ export default function DutiesSetter() {
             doctor.restoreInit();
         }
         e.target.parentElement.innerHTML = '[[Cofnięto wszystkie zmiany]]';
+        // Update preferences.
+        appData.monthlyDuties.updatePreferences();
         // Referesh doctor forms by refreshing state.
-        setAppData((prevState) => ({...prevState}));
+        refreshState();
     }
 
     const saveAllModifications = (e) => {
@@ -592,6 +558,9 @@ export default function DutiesSetter() {
             // Add doctor to unit and to schedule
             appData.unit.addDoctors([doctor]);
             appData.monthlyDuties.addDoctors([doctor]);
+
+            // Update preferences.
+            appData.monthlyDuties.updatePreferences();
 
             // Add doctor to state.
             const newDoctors = [...appData.doctors, doctor];
@@ -647,31 +616,50 @@ export default function DutiesSetter() {
         }
     }
 
-    const activateDoctor = async (pk) => {
-        // Get doctor; return if not found.
-        const doctor = appData.inactiveDoctors.find(doctor => doctor.pk === pk);
-        if (!doctor) {
+    const activateDoctor = async (...pks) => {
+        let newInactiveDoctors = [...appData.inactiveDoctors];
+        let newDoctors = [...appData.doctors];
+
+        // Keep count of errors.
+        let errors = 0;
+
+        for (const pk of pks) {
+            // Get doctor; return if not found.
+            const doctor = appData.inactiveDoctors.find(doctor => doctor.pk === pk);
+            if (!doctor) {
+                errors++;
+                continue;
+            }
+
+            // Move doctor to correct part of the state.
+            newInactiveDoctors = newInactiveDoctors.filter(d => !(d.pk === doctor.pk));
+            newDoctors = [...newDoctors, doctor];
+
+            // Add doctor to MD and unit instances.
+            appData.unit.addDoctors([doctor]);
+            appData.monthlyDuties.addDoctors([doctor]);
+
+            // Check if doctor settings are in DB and save them if not.
+            const settingsPk = doctor.getSettingsPk();
+            if (!settingsPk) {
+                createSettings(doctor);
+            }
+        }
+
+        // If no pks were found, indicate failure.
+        if (errors === pks.length) {
             return false;
         }
 
-        // Move doctor to correct part of the state.
-        const newInactiveDoctors = appData.inactiveDoctors.filter(d => !(d.pk === doctor.pk));
-        const newDoctors = [...appData.doctors, doctor];
+        // Update preferences.
+        appData.monthlyDuties.updatePreferences();
+
+        // Save changes in state.
         setAppData((prevState) => ({
             ...prevState,
             inactiveDoctors: newInactiveDoctors,
             doctors: newDoctors
         }));
-
-        // Add doctor to MD and unit instances.
-        appData.unit.addDoctors([doctor]);
-        appData.monthlyDuties.addDoctors([doctor]);
-
-        // Check if doctor settings are in DB and save them, it not.
-        const settingsPk = doctor.getSettingsPk();
-        if (!settingsPk) {
-            createSettings(doctor);
-        }
 
         return true;
     }
@@ -679,6 +667,9 @@ export default function DutiesSetter() {
     const removeDoctor = async (pk) => {
         appData.monthlyDuties.removeDoctor(pk);
         appData.unit.removeDoctor(pk);
+
+        // Update preferences.
+        appData.monthlyDuties.updatePreferences();
 
         const removedDoctor = appData.doctors.find(doctor => doctor.pk === pk);
         const newDoctors = appData.doctors.filter(doctor => !(doctor.pk === pk));
@@ -739,6 +730,43 @@ export default function DutiesSetter() {
         }));
     }
 
+    const saveToDisk = () => {
+        const duties = appData.monthlyDuties.getDuties();
+        const dutyPositions = appData.monthlyDuties.dutyPositions;
+        const month = appData.monthlyDuties.getMonth();
+        const year = appData.monthlyDuties.getYear();
+
+        const data = (
+            [...duties.entries()]
+            .map(([day, dailyDuties]) => 
+                [
+                    day.number.toString(),
+                    ...(Object.values(dailyDuties)
+                    .map(duty => {
+                        const doctor = duty.getDoctor();
+                        return `${doctor === null ? '-' : doctor.name}`
+                    }))
+                ]
+            )
+        );
+        data.unshift(['DZIEŃ', ...(dutyPositions.map(p => positionNames[p]))]);
+        data.unshift([]);
+        data.unshift(['', `${appData.unit.name}`, `${months[month]} ${year}`]);
+        data.unshift([]);
+        data.unshift(['', 'DyzuryMedyczne.pl']);
+        data.unshift([]);
+
+        const worksheet = xlsx.utils.aoa_to_sheet(data);
+        worksheet['!cols'] = [ { wch: 6 }, ...(dutyPositions.map(_ => ({ wch: 20 })))];
+        worksheet['!merges'] = [
+            { s: { c: 1, r: 1}, e: { c: 4, r: 1 } },
+        ];
+        const workbook = xlsx.utils.book_new();
+        xlsx.utils.book_append_sheet(workbook, worksheet, 'Dyżury');
+        console.log(data);
+        xlsx.writeFileXLSX(workbook, `${year}-${month}_dyzury_${appData.unit.name}.xlsx`);
+    }
+
     const saveSchedule = async () => {
         dismissAlerts();
         setShowSpinner(true);
@@ -768,6 +796,8 @@ export default function DutiesSetter() {
             data.duties = duties.map(duty => {
                 const mapped = {
                     day: duty.getDay().number,
+                    weekday: duty.getDay().weekday,
+                    week: duty.getDay().week,
                     position: duty.getPosition(),
                     strain_points: duty.getStrain(),
                     user_set: duty.isUserSet()
@@ -803,7 +833,24 @@ export default function DutiesSetter() {
 
     const clearDuties = (all=false) => {
         appData.monthlyDuties.clearDuties(all);
-        setAppData((prevState) => ({...prevState}));
+        appData.monthlyDuties.updatePreferences();
+        refreshState();
+    }
+
+    const toggleHighlight = (doctor) => {
+        if (highlight === doctor) {
+            setHighlight('');
+        } else if (doctor) {
+            setHighlight(doctor);
+        }
+    }
+
+    const accordionToggleHighlight = (e, doctor) => {
+        if (e.target.className === 'accordion-button collapsed') {
+            setHighlight(doctor);
+        } else {
+            setHighlight('');
+        }
     }
 
     const dismissAlerts = () => {
@@ -822,13 +869,17 @@ export default function DutiesSetter() {
         }));
     }
 
+    const refreshState = () => {
+        setAppData((prevState) => ({...prevState}));
+    }
+
     const doctorList = [];
 
     for (let i=0; i<appData.doctors.length; i++) {
         doctorList.push(
-            <Accordion.Item key={appData.doctors[i].pk} eventKey={i}>
+            <Accordion.Item key={appData.doctors[i].pk} eventKey={appData.doctors[i].pk}>
                 <Accordion.Header 
-                    onClick={() => setHighlight(appData.doctors[i])}>
+                    onClick={(e) => {accordionToggleHighlight(e, appData.doctors[i])}}>
                         {appData.doctors[i].name}
                 </Accordion.Header>
                 <Accordion.Body>
@@ -845,7 +896,7 @@ export default function DutiesSetter() {
     }
 
     doctorList.push(
-        <Accordion.Item key={-1} eventKey={doctorList.length} >
+        <Accordion.Item key={-1} eventKey={0} >
             <Accordion.Header>+ Dodaj lekarza</Accordion.Header>
             <Accordion.Body>
                 <DoctorActivateForm 
@@ -859,7 +910,7 @@ export default function DutiesSetter() {
     )
 
     const leftCol = (
-        <Accordion defaultActiveKey={['0']} alwaysOpen flush>
+        <Accordion defaultActiveKey={['0']} flush>
             {doctorList}
         </Accordion>
     );
@@ -884,18 +935,20 @@ export default function DutiesSetter() {
             />
             <Row className="duty-menu border-top">
                 <Col className="d-flex align-items-center justify-content-evenly">
-                    <button 
-                        className="btn btn-primary border" 
-                        onClick={setDuties}
-                    >
-                        Ułóż grafik
-                    </button>
-                    <button 
-                        className="btn btn-light border" 
-                        onClick={checkSettings}
-                    >
-                        Sprawdź ustawienia
-                    </button>
+                        <button 
+                            className="btn btn-primary border" 
+                            onClick={setDuties}
+                        >
+                            Ułóż grafik
+                        </button>
+                    <WithTooltip message="Sprawdza, czy preferencje lekarzy pozwalają ułożyć grafik">
+                        <button 
+                            className="btn btn-light border" 
+                            onClick={checkSettings}
+                        >
+                            Sprawdź
+                        </button>
+                    </WithTooltip>
                     <button 
                         className="btn btn-light border"
                         onClick={toggleLog}
@@ -908,31 +961,38 @@ export default function DutiesSetter() {
                     >
                         {hideStatistics ? 'Pokaż' : 'Ukryj'} statystyki
                     </button>
-                    <button 
-                        className="btn btn-light border" 
-                        onClick={() => clearDuties(false)}
-                    >
-                        Wyczyść
-                    </button>
-                    <button 
-                        className="btn btn-light border" 
-                        onClick={() => clearDuties(true)}
-                    >
-                        Wyczyść wszystko
-                    </button>
-                    <button 
-                        className="btn btn-light border" 
-                        onClick={() => {appData.monthlyDuties.setDuties()}}
-                    >
-                        Test
-                    </button>
-                    <button 
-                        className="btn btn-success border" 
-                        onClick={saveSchedule}
-                    >
-                        Zapisz
-                    </button>
-
+                    <WithTooltip message="Usuwa dyżury (poza ułożonymi przez użytkownika)">
+                        <button 
+                            className="btn btn-light border" 
+                            onClick={() => clearDuties(false)}
+                        >
+                            Wyczyść
+                        </button>
+                    </WithTooltip>
+                    <WithTooltip message="Usuwa dyżury (w tym ułożone przez użytkownika)">
+                        <button 
+                            className="btn btn-light border" 
+                            onClick={() => clearDuties(true)}
+                        >
+                            Wyczyść wszystko
+                        </button>
+                    </WithTooltip>
+                    <WithTooltip message="Zapisuje grafik do Excela (.xlsx)">
+                        <button 
+                            className="btn btn-light border" 
+                            onClick={saveToDisk}
+                        >
+                            Pobierz
+                        </button>
+                    </WithTooltip>
+                    <WithTooltip message="Zapisuje grafik na serwerze">
+                        <button 
+                            className="btn btn-success border" 
+                            onClick={saveSchedule}
+                        >
+                            Zapisz
+                        </button>
+                    </WithTooltip>
                 </Col>
             </Row>
             { 

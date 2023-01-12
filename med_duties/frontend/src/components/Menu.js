@@ -11,15 +11,15 @@ export default function Menu() {
 
     return (
         <>
-            <MenuRow asLink to={'/doctors/'} addedClass="bg-danger">
+            <MenuRow asLink to={'/doctors/'} addedClass="main-menu-item">
                 <h2>Lekarze</h2>
                 <p>Dodawaj i edytuj profile lekarzy</p>
             </MenuRow>
-            <MenuRow asLink to={'/duties/'} addedClass="bg-warning">
+            <MenuRow asLink to={'/duties/'} addedClass="main-menu-item">
                 <h2>Dyżury</h2>
                 <p>Układaj i przeglądaj grafiki</p>
             </MenuRow>
-            <MenuRow asLink to={'/statistics/'} addedClass="bg-primary">
+            <MenuRow asLink to={'/statistics/'} addedClass="main-menu-item">
                 <h2>Statystyki</h2>
                 <p>Sprawdź statystyki lekarzy i oddziału</p>
             </MenuRow>

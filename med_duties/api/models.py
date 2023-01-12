@@ -36,7 +36,7 @@ class Unit(models.Model):
 
 
 class Doctor(models.Model):
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=30)
     unit = models.ForeignKey(
         'Unit', on_delete=models.CASCADE, related_name='doctors')
     impersonated_user = models.OneToOneField('User', related_name='my_doctor',
@@ -116,10 +116,14 @@ class MonthlyDuties(models.Model):
 class Duty(models.Model):
     day = models.PositiveIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(31)])
+    weekday = models.PositiveIntegerField(
+        validators=[MaxValueValidator(6)])
+    week = models.PositiveIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(7)], default=1)
     position = models.PositiveIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(3)])
     strain_points = models.PositiveIntegerField()
-    doctor = models.ForeignKey('Doctor', on_delete=models.CASCADE, 
+    doctor = models.ForeignKey('Doctor', on_delete=models.SET_NULL, 
                                related_name='duties', blank=True, null=True)
     monthly_duties = models.ForeignKey(
         'MonthlyDuties', on_delete=models.CASCADE, related_name='duties')

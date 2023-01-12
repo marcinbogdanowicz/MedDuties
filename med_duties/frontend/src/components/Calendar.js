@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import ToggleButton from 'react-bootstrap/ToggleButton';
 import ToggleButtonGroup from 'react-bootstrap/ToggleButtonGroup';
 import { range, getWeekday } from './algorithm/utils';
+import WithTooltip from './WithTooltip';
 
 
 export default function Calendar(props) {
@@ -9,7 +10,7 @@ export default function Calendar(props) {
     const doctorData = props.doctorData;
     const setDoctorData = props.setDoctorData;
 
-    const [mode, setMode] = useState(null);
+    const [mode, setMode] = useState('');
     const [message, setMessage] = useState('');
 
     const doctor = props.doctor;
@@ -119,7 +120,7 @@ export default function Calendar(props) {
         setDoctorData((prevState) => ({
             ...prevState,
             preferredWeekdays: newPreferredWeekdays
-        }));        
+        }));
     }
 
     const handleOnClick = (e) => {
@@ -136,7 +137,7 @@ export default function Calendar(props) {
                     day = weekdays.findIndex(wd => wd === e.target.innerHTML);
                 } else {
                     day = getWeekday(year, month, day);
-                }                
+                }
                 setPreferredWeekday(day);
         }
     }
@@ -176,7 +177,7 @@ export default function Calendar(props) {
             weeks.push([...currWeek]);
             currWeek = [];
         }
-        
+
         if (day === length) {
             range(7-weekday).forEach((x, i) => currWeek.push(
                 <td key={`${length}-${i}-${doctor.name}`} ></td>
@@ -189,19 +190,30 @@ export default function Calendar(props) {
         setMode(value);
     }
 
+    let tooltipMessage = 'Kliknij, by wybrać kategorię';
+    if (mode === 'exceptions') {
+        tooltipMessage = 'Wybierasz dni miesiąca zastrzeżone przez lekarza (czerwone)';
+    } else if (mode === 'preferredDays') {
+        tooltipMessage = 'Wybierasz dni miesiąca, w które lekarz ma otrzymać dyżur (niebieskie)';
+    } else if (mode === 'preferredWeekdays') {
+        tooltipMessage = 'Wybierasz dni tygodnia, w które lekarz może otrzymać dyżur (zielone)';
+    }
+
     return (
         <div>
-            <ToggleButtonGroup type="radio" name="modes" value={mode} onChange={handleModeChange} className={message ? "mb-2" : "mb-4"}>
-                <ToggleButton id={`modes-1-${doctor.name}`} value={'exceptions'} variant="outline-danger">
-                    Zastrzeżone
-                </ToggleButton>
-                <ToggleButton id={`modes-2-${doctor.name}`} value={'preferredDays'} variant="outline-primary">
-                    D. Miesiąca
-                </ToggleButton>
-                <ToggleButton id={`modes-3-${doctor.name}`} value={'preferredWeekdays'} variant="outline-success">
-                    D. Tygodnia
-                </ToggleButton>
-            </ToggleButtonGroup>
+            <WithTooltip message={tooltipMessage}>
+                <ToggleButtonGroup type="radio" name="modes" value={mode} onChange={handleModeChange} className={message ? "mb-2" : "mb-4"}>
+                    <ToggleButton id={`modes-1-${doctor.name}`} value={'exceptions'} variant="outline-danger">
+                        Zastrz.
+                    </ToggleButton>
+                    <ToggleButton id={`modes-2-${doctor.name}`} value={'preferredDays'} variant="outline-primary">
+                        D. Mies.
+                    </ToggleButton>
+                    <ToggleButton id={`modes-3-${doctor.name}`} value={'preferredWeekdays'} variant="outline-success">
+                        D. Tyg.
+                    </ToggleButton>
+                </ToggleButtonGroup>
+            </WithTooltip>
             { message && <div className="mb-2"><small className="text-danger">{message}</small></div> }
             <table className="calendar">
                 <thead>

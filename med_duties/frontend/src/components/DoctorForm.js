@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Form from 'react-bootstrap/Form';
-import FloatingLabel from 'react-bootstrap/FloatingLabel';
 import Calendar from './Calendar';
-import { range } from './algorithm/utils';
+import WithTooltip from './WithTooltip';
 
 
 export default function DoctorForm(props) {
@@ -73,8 +72,8 @@ export default function DoctorForm(props) {
         if (isNaN(doctorData.maxDuties)) {
             newMessages.maxDuties = "Proszę podać liczbę.";
         } 
-        else if (doctorData.maxDuties > 15 || doctorData.maxDuties < 1) {
-            newMessages.maxDuties = "Proszę podać liczbę w przedziale 1 - 15";
+        else if (doctorData.maxDuties > 16 || doctorData.maxDuties < 1) {
+            newMessages.maxDuties = "Proszę podać liczbę w przedziale 1 - 16";
         }
 
         if (doctorData.exceptions.some(exc => (exc < 1 || exc > daysInMonth))) {
@@ -138,18 +137,30 @@ export default function DoctorForm(props) {
     return (
         <div>
             <Form onSubmit={submitHandler}>
-                <Form.Group className="mb-4">
+                <Form.Group className="mb-3">
                     <Form.Control type="submit" value="Zapisz ustawienia" className='btn btn-primary' />
                     { messages.success && <Form.Text>{messages.success}</Form.Text> }
                 </Form.Group>
-                <Form.Group className="mb-4">
-                    <FloatingLabel label="Maksymalna liczba dyżurów">
-                        <Form.Control type="number" name="maxDuties" value={doctorData.maxDuties} onChange={inputHandler} placeholder="" />
-                    </FloatingLabel>
+                <Form.Group className="mb-3">
+                    <Form.Label>
+                        Maksymalna liczba dyżurów 
+                        <WithTooltip 
+                            message={"Lekarz nie dostanie więcej dyżurów, " +
+                                "ale może dostać mniej. Wybierz od 1 do 16."}>
+                        </WithTooltip>
+                    </Form.Label>
+                    <Form.Control type="number" name="maxDuties" value={doctorData.maxDuties} onChange={inputHandler} placeholder="" />
                     { messages.maxDuties && <Form.Text className="text-danger">{ messages.maxDuties }</Form.Text> }
                 </Form.Group>
                 <Form.Group className="mb-1">
-                    <Form.Label>Wybierz preferencje dni</Form.Label>
+                    <Form.Label>
+                        Ustawienia poszczególnych dni 
+                        <WithTooltip 
+                            message={"Wybierz kategorię dni, które chcesz zmienić, " +
+                                "następnie zaznaczaj i odznaczaj dni miesiąca " +
+                                "lub tygodnia w kalendarzu."}>
+                        </WithTooltip>
+                    </Form.Label>
                     <Calendar 
                         year={year} 
                         month={month} 
@@ -175,15 +186,11 @@ export default function DoctorForm(props) {
                 <hr />
                 <Form.Group className="mb-3">
                     <Form.Check type="checkbox" name="locked" label="Zablokuj ustawienia" id={`lock-doc-${doctor.pk}`} checked={doctorData.locked} onChange={inputHandler} />
-                    <Form.Text>
-                        Program nie zmieni ustawień tego lekarza, nawet jeśli ułożenie dyżurów nie będzie możliwe.
-                    </Form.Text>
                 </Form.Group>
                 <Form.Group>
-                    <Form.Control type="submit" value="Usuń z grafiku" className='btn btn-light border' onClick={removeHandler} />
-                    <Form.Text>
-                        Lekarza możesz dodać z powrotem w zakładce "Dodaj lekarza" na dole strony.
-                    </Form.Text>
+                    <WithTooltip message='Lekarza możesz dodać z powrotem w zakładce "Dodaj lekarza" na dole strony.'>
+                        <Form.Control type="submit" value="Usuń z grafiku" className='btn btn-light border' onClick={removeHandler} />
+                    </WithTooltip>
                 </Form.Group>
             </Form>
         </div>

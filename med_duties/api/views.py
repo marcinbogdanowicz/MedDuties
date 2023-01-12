@@ -1,3 +1,4 @@
+import json
 from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext as _
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -5,7 +6,10 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import permissions, status, exceptions
 from rest_framework.views import APIView
+from rest_framework.settings import api_settings
 from rest_framework.generics import (
+    CreateAPIView,
+    ListAPIView,
     ListCreateAPIView,
     RetrieveUpdateDestroyAPIView, 
     RetrieveUpdateAPIView,
@@ -36,18 +40,19 @@ class ObtainTokenPairView(TokenObtainPairView):
     serializer_class = TokenObtainPairSerializer
 
 
-class CreateUserView(APIView):
+class CreateUserView(CreateAPIView):
     permission_classes = (permissions.AllowAny,)
-    authentication_classes = ()
+    serializer_class = UserSerializer
 
-    def post(self, request, format='json'):
-        serializer = UserSerializer(data=request.data, context={'request': request})
-        if serializer.is_valid():
-            user = serializer.save()
-            if user:
-                json = serializer.data
-                return Response(json, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    def get_authenticators(self):
+        request_body = json.loads(self.request.body)
+        creating_head_user = request_body.get('is_head_user', False)
+        print(creating_head_user)
+        if creating_head_user:
+            return []
+        else:
+            return [auth() for auth 
+                    in api_settings.DEFAULT_AUTHENTICATION_CLASSES]
 
 
 class LogoutAndBlacklistRefreshTokenForUserView(APIView):
@@ -57,6 +62,8 @@ class LogoutAndBlacklistRefreshTokenForUserView(APIView):
     def post(self, request):
         try:
             refresh_token = request.data["refresh_token"]
+            if refresh_token is None:
+                raise Exception()
             token = RefreshToken(refresh_token)
             token.blacklist()
             return Response(status=status.HTTP_205_RESET_CONTENT)
@@ -121,8 +128,7 @@ class DoctorDetailView(RetrieveUpdateDestroyAPIView):
     Returns details of a single doctor.
     Accessible by unit members only.
     """
-    permission_classes = (permissions.IsAuthenticated, 
-                          custom_permissions.IsOwnerOrIsImpersonatedDoctor)
+
     serializer_class = DoctorSerializer
 
     def get_queryset(self):
@@ -133,6 +139,23 @@ class DoctorDetailView(RetrieveUpdateDestroyAPIView):
         obj = get_object_or_404(self.get_queryset(), pk=self.kwargs['doctor_pk'])
         self.check_object_permissions(self.request, obj)
         return obj
+
+class DoctorDutiesListView(ListAPIView):
+    """
+    Returns all duties of a single doctor.
+    """
+
+    serializer_class = DutySerializer
+
+    def get_queryset(self):
+        user = self.request.user
+
+        if user.unit is not None:
+            unit = get_object_or_404(Unit, pk=self.kwargs['unit_pk'], 
+                                    owner=user.unit.owner)
+            doctor = get_object_or_404(Doctor, pk=self.kwargs['doctor_pk'], unit=unit)
+            return Duty.objects.filter(doctor=doctor)
+        raise exceptions.PermissionDenied('User does not belong to any unit.')
 
 
 class MonthlyDutiesListView(ListCreateAPIView):

@@ -2,17 +2,7 @@ import { range, getNumberOfWeekdaysInMonth, getDiff } from './utils';
 import EvaluationChart from './EvaluationChart';
 
 
-/*
-TODO
-
-Getting modifiers implied by previous month's last duties
-is not implemented. Those should be provided outside Doctor class
-and passed to it.
-There need to be means for warning user of incompatibility
-between schedules, if a previous one is modified.
-*/
-
-var MAX_NUMBER_OF_DUTIES_PER_MONTH = 15;
+var MAX_NUMBER_OF_DUTIES_PER_MONTH = 16;
 
 var MODIFIER_DUTY_IMPOSSIBLE = 10000;
 var MODIFIER_TWO_DAYS_APART = 30;
@@ -701,8 +691,6 @@ class Doctor {
                 statistics.holidays++;
             }
         });
-
-        console.log(this.name, statistics.weekends, myDuties);
 
         // Count weekends
         statistics.weekends = statistics.weekends.size;

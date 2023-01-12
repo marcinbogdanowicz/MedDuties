@@ -6,7 +6,7 @@ export default function MenuRow(props) {
     if (props.asLink) {
         return (
             <Row as={Link} to={props.to} className={
-                "d-flex flex-grow-1 align-items-center justify-content-center w-100 g-0 p-5 block-link " 
+                "d-flex flex-grow-1 align-items-center justify-content-center w-100 g-0 p-5 " 
                 + props.addedClass}>
             <div className="w-50">
                 {props.children}

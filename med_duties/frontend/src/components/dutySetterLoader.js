@@ -16,15 +16,20 @@ export default async function dutySetterLoader({ params }) {
             // Get user's unit pk.
             const userURL = `/user/${userId}/`;
             const userResponse = await axiosInstance.get(userURL);
-            const unitData = userResponse.data.unit;
+            const unitPk = userResponse.data.unit;
+
+            // Get unit data.
+            const unitURL = `/unit/${unitPk}/`;
+            const unitResponse = await axiosInstance.get(unitURL);
+            const unitData = unitResponse.data;
 
             // Get unit doctors' details.
-            const doctorsURL = `/unit/${unitData.pk}/doctors/`;
+            const doctorsURL = `/unit/${unitPk}/doctors/`;
             const doctorsResponse = await axiosInstance.get(doctorsURL);
             const doctorsData = doctorsResponse.data;
 
             // Get schedules details.
-            const scheduleURL = `/unit/${unitData.pk}/duties/${params.year}/${params.month}/`;
+            const scheduleURL = `/unit/${unitPk}/duties/${params.year}/${params.month}/`;
             const scheduleResponse = await axiosInstance.get(scheduleURL);
             const scheduleData = scheduleResponse.data;
 
@@ -35,7 +40,7 @@ export default async function dutySetterLoader({ params }) {
                 // Get previous months duties.
                 const prevDutiesYear = params.month === '1' ? parseInt(params.year)-1 : params.year;
                 const prevDutiesMonth = params.month === '1' ? '12' : parseInt(params.month)-1;
-                const prevDutiesURL = `/unit/${unitData.pk}/duties/${prevDutiesYear}/${prevDutiesMonth}/duty/`;
+                const prevDutiesURL = `/unit/${unitPk}/duties/${prevDutiesYear}/${prevDutiesMonth}/duty/`;
                 const prevDutiesResponse = await axiosInstance.get(prevDutiesURL);
                 prevDutiesData = prevDutiesResponse.data;
             } catch (error) {
@@ -46,7 +51,7 @@ export default async function dutySetterLoader({ params }) {
                 // Get next months duties.
                 const nextDutiesYear = params.month === '12' ? parseInt(params.year)+1 : params.year;
                 const nextDutiesMonth = params.month === '12' ? '1' : parseInt(params.month)+1;
-                const nextDutiesURL = `/unit/${unitData.pk}/duties/${nextDutiesYear}/${nextDutiesMonth}/duty/`;
+                const nextDutiesURL = `/unit/${unitPk}/duties/${nextDutiesYear}/${nextDutiesMonth}/duty/`;
                 const nextDutiesResponse = await axiosInstance.get(nextDutiesURL);
                 nextDutiesData = nextDutiesResponse.data;
             } catch (error) {

@@ -32,7 +32,7 @@ export default function Register() {
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-        
+
         // Check for invalid form fields.
         const newErrors = {};
         if (registerData.password.length === 0) {
@@ -64,20 +64,31 @@ export default function Register() {
 
         // Proceed form.
         try {
-            // Create user instance along with his unit instance.
-            const response = await axiosInstance.post('/user/create/', {
+            // Create user instance.
+            const userResponse = await axiosInstance.post('/user/create/', {
                 username: registerData.username,
                 password: registerData.password,
                 email: registerData.email,
-                is_head_doctor: true,
-                unit: {
-                    name: registerData.unitName,
-                    duty_positions: registerData.dutyPositions
-                }
-            });            
+                is_head_doctor: true
+            });
+            const userPk = userResponse.data.pk;
 
-            // Log user in and redirect to menu.
+            // Log user in.
             await logUserIn(registerData.username, registerData.password);
+
+            // Create unit instance.
+            const unitResponse = await axiosInstance.post('/unit/', {
+                name: registerData.unitName,
+                duty_positions: registerData.dutyPositions
+            });
+            const unitPk = unitResponse.data.pk;
+
+            // Update unit in user instance.
+            const userUpdateReponse = await axiosInstance.patch(`/user/${userPk}/`, {
+                unit: unitPk
+            });
+
+            // Redirect to menu.
             navigate('/menu/');
 
         } catch (error) {
@@ -100,7 +111,7 @@ export default function Register() {
     }
 
     return (
-        <MenuRow addedClass="bg-warning">
+        <MenuRow addedClass="login-register">
 
             <Form onSubmit={handleSubmit}>
 

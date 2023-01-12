@@ -1,4 +1,5 @@
 import 'bootstrap/dist/css/bootstrap.css';
+import 'bootstrap-icons/font/bootstrap-icons.css';
 import './styles.css';
 import React from 'react'
 import { createRoot } from 'react-dom/client';
@@ -11,7 +12,11 @@ import loginLoader from './components/loginLoader';
 import menuLoader from './components/menuLoader';
 import dutiesLoader from './components/dutiesLoader';
 import dutySetterLoader from './components/dutySetterLoader';
+import doctorsLoader from './components/doctorsLoader';
+import statisticsLoader from './components/statisticsLoader';
 import ErrorPage from './components/ErrorPage';
+import Statistics from './components/Statistics';
+import Doctors from './components/Doctors';
 import DutySetter from './components/DutySetter';
 import Duties from './components/Duties';
 import Login from './components/Login';
@@ -61,6 +66,16 @@ const router = createBrowserRouter([
                 path: "duties/:year/:month/",
                 element: <DutySetter />,
                 loader: dutySetterLoader
+            },
+            {
+                path: "doctors/",
+                element: <Doctors />,
+                loader: doctorsLoader
+            },
+            {
+                path: "statistics/",
+                element: <Statistics />,
+                loader: statisticsLoader
             },
         ]
     }

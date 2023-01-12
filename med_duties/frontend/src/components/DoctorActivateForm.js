@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Form from 'react-bootstrap/Form';
 
 export default function DoctorActivateForm(props) {
@@ -30,6 +30,17 @@ export default function DoctorActivateForm(props) {
         setDoctor(0);
     }
 
+    const addAll = () => {
+        const pks = doctors.map(d => d.pk);
+        const result = activateDoctor(...pks);
+        if (!result) {
+            setMessage('Nie udało się dodać żadnego lekarza.');
+        }
+        setDoctor(0);
+    }
+
+    const disabled = doctors.length === 0;
+
     return (
         <div>
             <h6>Istniejący lekarz</h6>
@@ -42,7 +53,8 @@ export default function DoctorActivateForm(props) {
                     </Form.Select>
                 </Form.Group>
                 <Form.Group>
-                    <button type="submit" className="btn btn-primary">Dodaj</button>
+                    <button type="submit" className="btn btn-primary me-3" disabled={disabled}>Dodaj</button>
+                    <button className="btn btn-primary" onClick={addAll} disabled={disabled}>Dodaj wszystkich</button>
                 </Form.Group>
                 { message && <Form.Text>{message}</Form.Text> }
             </Form>

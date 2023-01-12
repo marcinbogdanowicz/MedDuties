@@ -2,13 +2,14 @@ from django.urls import path
 from rest_framework_simplejwt import views as jwt_views
 from .views import (
     ObtainTokenPairView,
-    CreateUserView, 
+    CreateUserView,
     LogoutAndBlacklistRefreshTokenForUserView, 
     UserDetailView,
     UnitListView,
     UnitDetailView,
     DoctorListView,
     DoctorDetailView,
+    DoctorDutiesListView,
     MonthlyDutiesListView,
     MonthlyDutiesDetailView,
     DoctorMonthlyDataListView,
@@ -18,7 +19,7 @@ from .views import (
 )
 
 urlpatterns = [
-    path('user/create/', 
+    path('user/create/',
         CreateUserView.as_view(), name='create_user'),
     path('user/<int:pk>/',
         UserDetailView.as_view(), name='user-detail'),
@@ -36,6 +37,8 @@ urlpatterns = [
         DoctorListView.as_view(), name='doctor-list'),
     path('unit/<int:unit_pk>/doctors/<int:doctor_pk>/',
         DoctorDetailView.as_view(), name='doctor-detail'),
+    path('unit/<int:unit_pk>/doctors/<int:doctor_pk>/duties/',
+        DoctorDutiesListView.as_view(), name='doctor-duties-list'),
     path('unit/<int:unit_pk>/duties/',
         MonthlyDutiesListView.as_view(), name='monthly-duties-list'),
     path('unit/<int:unit_pk>/duties/<int:year>/<int:month>/',

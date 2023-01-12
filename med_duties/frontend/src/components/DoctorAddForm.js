@@ -15,7 +15,7 @@ export default function DoctorAddForm(props) {
     }
     return (
         <div>
-            <h6>Nowy lekarz</h6>
+            <h5>Nowy lekarz</h5>
             <Form onSubmit={handleSubmit} >
                 <Form.Group className="mb-4">
                     <Form.Label>Imię</Form.Label>

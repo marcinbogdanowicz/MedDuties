@@ -25,7 +25,7 @@ export default function StatisticsTable(props) {
             });
             setRows(tableRows);
             setSortBy(null);
-        }        
+        }
     }, [props.statistics]);
 
     const sort = (value) => {

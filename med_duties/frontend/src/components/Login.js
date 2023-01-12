@@ -37,7 +37,7 @@ export default function Login() {
     }
 
     return (
-        <MenuRow addedClass="bg-warning">
+        <MenuRow addedClass="login-register">
             <Form onSubmit={handleSubmit}>
                 <h2 className="mb-5">Logowanie</h2>
                 <Form.Group className="mb-3">

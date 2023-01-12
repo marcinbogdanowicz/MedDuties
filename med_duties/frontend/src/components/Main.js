@@ -9,7 +9,7 @@ export default function Main() {
     return (
         <Container fluid className="d-flex align-items-stretch vh-100 px-0">
             <Col className="d-flex align-items-stretch w-100">
-                <Row className="d-flex align-items-center w-100 gx-0 p-5 bg-secondary text-white">
+                <Row className="d-flex align-items-center w-100 gx-0 p-5 main-logo">
                     <center>
                         <h1>Dyżury Medyczne</h1>
                     </center>
