@@ -11,17 +11,17 @@ export default function DutyStatistics(props) {
     const keys = new Map([
         ['name', ''],
         ['duties', 'Dyżury'],
-        ['strain', 'Obciążenie'],
-        ['weekends', 'Weekendy'],
         ['holidays', 'Święta'],
+        ['weekends', 'Weekendy'],
+        ['weekendDays', 'Pią-Nie'],
         ['0', 'Pon'],
         ['1', 'Wto'],
         ['2', 'Śro'],
         ['3', 'Czw'],
         ['4', 'Pią'],
         ['5', 'Sob'],
-        ['6', 'Nie'],
-        ['weekendDays', 'Pią-Nie']
+        ['6', 'Nie'],        
+        ['strain', 'Obciążenie']
     ]);
 
     const heading = <h5>Statystyki</h5>

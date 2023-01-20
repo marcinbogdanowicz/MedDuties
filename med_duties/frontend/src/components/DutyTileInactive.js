@@ -14,15 +14,20 @@ export default function DutyTileInactive(props) {
         doctorDiv = <div className="duty-tile-on-duty" onClick={() => toggleHighlight(doctor)}>{doctor.name}</div>;
     }
 
-    let colClasses = "border-start border-2 border-light text-light duty-tile ";
+    let colClasses = "border-2 border-light text-light duty-tile ";
     if (highlight === doctor) {
-        colClasses += "inactive highlight";
+        colClasses += "inactive highlight ";
     } else {
-        colClasses += `inactive-${position}`;
-    }   
+        colClasses += `inactive-${position} `;
+    }
+
+    const mobile = window.matchMedia("(max-width: 768px)").matches;
+    if (!mobile) {
+        colClasses += "border-start ";
+    }
 
     return (
-        <Col className={colClasses} >
+        <Col md className={colClasses} >
             { doctorDiv }
         </Col>
     );

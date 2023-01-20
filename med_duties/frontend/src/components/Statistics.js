@@ -197,13 +197,13 @@ export default function Statistics() {
 
     const rightCol = (
         <div className="tile-table">
-            <div className="">
+            <div className="bg-schedule-light pt-4">
                 <div className="mb-4">
                     <h3><center>Statystyki oddziału</center></h3>
                     <h6><center>(średnio miesięcznie)</center></h6>
                 </div>
                 <StatisticsTable statistics={doctorsToShow} keys={keys} />
-                <p className="fs-7">Kolumny zawierają wartości średnie 
+                <p className="fs-7 p-2">Kolumny zawierają wartości średnie 
                 w ujęciu miesięcznym, za wyjątkiem liczby grafików,
                 w których lekarz jest obsadzony.<br/>
                 Klikaj na nagłówki kolumn, by sortować dane.</p>
@@ -212,7 +212,7 @@ export default function Statistics() {
     );
 
     const leftCol = (
-        <div className="left-col d-flex justify-content-center">
+        <div className="d-flex justify-content-center">
             <div className="m-5 w-100">
                 <h5>Wybierz lekarzy</h5>
                 <Form className="mb-4">
@@ -250,5 +250,11 @@ export default function Statistics() {
         </div>
     );
 
-    return <ColumnLayout leftCol={leftCol} rightCol={rightCol} logoPrimary={unit.name} logoSecondary={"Statystyki"}/>
+    return <ColumnLayout 
+        leftCol={leftCol} 
+        rightCol={rightCol} 
+        logoPrimary={unit.name} 
+        logoSecondary={"Statystyki"}
+        alwaysShowLeftCol
+    />
 }

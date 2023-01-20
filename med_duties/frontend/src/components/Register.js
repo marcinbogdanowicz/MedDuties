@@ -10,7 +10,6 @@ import MenuRow from './MenuRow';
 
 export default function Register() {
     const navigate = useNavigate();
-
     const [registerData, setRegisterData] = React.useState({
         username: "",
         password: "",
@@ -19,8 +18,8 @@ export default function Register() {
         unitName: "",
         dutyPositions: "",
     });
-
     const [errors, setErrors] = React.useState({});
+    const mobile = window.matchMedia("(max-width: 768px)").matches;
 
     const inputHandler = (event) => {
         const { name, value } = event.target;
@@ -111,7 +110,7 @@ export default function Register() {
     }
 
     return (
-        <MenuRow addedClass="login-register">
+        <MenuRow addedClass={mobile ? "login-register-mobile" : "login-register"}>
 
             <Form onSubmit={handleSubmit}>
 

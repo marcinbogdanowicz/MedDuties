@@ -28,6 +28,8 @@ export default function Schedule(props) {
     const highlight = props.highlight;
     const toggleHighlight = props.toggleHighlight;
 
+    const mobile = window.matchMedia("(max-width: 768px)").matches;
+
     const dayTiles = [];
     if (appData.monthlyDuties.constructor.name === 'MonthlyDuties') {
         const weekdays = ['Pon.', 'Wto.', 'Śro.', 'Czw.',
@@ -58,7 +60,7 @@ export default function Schedule(props) {
             // Create day number.
             const day = monthlyDuties.getDay(i);
             rowContent.unshift(
-                <Col xs={1} key={`${i}-0`} className={"border-end border-2 border-light duty-calendar-tile " + (day.weekday === 5 || day.weekday === 6 ? "weekend" : "weekday")}>
+                <Col md={1} key={`${i}-0`} className={"border-2 border-light duty-calendar-tile " + (day.weekday === 5 || day.weekday === 6 ? "weekend" : "weekday") + (mobile ? "" : " border-end")}>
                     <p className="duty-calendar-tile-day">{i}</p>
                     <p className="duty-calendar-tile-weekday">{weekdays[day.weekday]}</p>
                 </Col>
@@ -107,7 +109,7 @@ export default function Schedule(props) {
             // Create day number.
             const weekday = getWeekday(currYear, currMonth, currDay);
             rowContent.unshift(
-                <Col xs={1} key={`${currMonth}-${currDay}-0`} className={"border-end border-2 border-light duty-calendar-tile inactive " + (weekday === 5 || weekday === 6 ? "weekend" : "weekday")}>
+                <Col md={1} key={`${currMonth}-${currDay}-0`} className={"border-2 border-light duty-calendar-tile inactive " + (weekday === 5 || weekday === 6 ? "weekend" : "weekday") + (mobile ? "" : " border-end")}>
                     <p className="duty-calendar-tile-day">{currDay}</p>
                     <p className="duty-calendar-tile-weekday">{weekdays[weekday]}</p>
                 </Col>

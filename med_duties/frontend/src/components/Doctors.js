@@ -3,7 +3,7 @@ import { useLoaderData } from 'react-router-dom';
 import ColumnLayout from './ColumnLayout';
 import DoctorTile from './DoctorTile';
 import Alert from './Alert';
-import DoctorAddForm from './DoctorAddForm';
+import DoctorDataForm from './DoctorDataForm';
 import axiosInstance from '../axiosApi';
 import { DefaultDict } from './algorithm/utils';
 
@@ -27,8 +27,7 @@ export default function Doctors() {
         avgWeekendDays: 0
     });
     const [doctorDetails, setDoctorDetails] = useState([]);
-    const [showDoctorDetail, setShowDoctorDetail] = useState(false);
-    const [showNewDoctor, setShowNewDoctor] = useState(false);
+    const [show, setShow] = useState('');
     const [alertData, setAlertData] = useState({
         show: false,
         message: '',
@@ -40,13 +39,16 @@ export default function Doctors() {
         setDoctors(d);
     },  []);
 
+    const hide = () => {
+        setShow('');
+    }
+
     const showDoctor = async (doctor) => {
         // Check if data has been already downloaded.
         const detail = doctorDetails.find(d => d.pk === doctor.pk);
         if (detail) {
             setDoctorDetail(detail);
-            setShowNewDoctor(false);
-            setShowDoctorDetail(true);
+            setShow('doctorDetail');
             return;
         }
 
@@ -124,10 +126,15 @@ export default function Doctors() {
                 })
 
                 Object.entries(avg).forEach(([k, v]) => {
-                    if (['duties', 'strain'].includes(k)) {
+                    if (k === 'strain') {
                         return;
                     }
-                    let newVal = ((v / schedules.length).toFixed(1)).toString();
+                    let newVal = '';
+                    if (k === 'duties') {
+                        newVal = v;
+                    } else {
+                        newVal = ((v / schedules.length).toFixed(1)).toString();
+                    }
                     newVal = (
                         <span>
                             { newVal.slice(0,-1) }<span className="fs-7">{ newVal.slice(-1,newVal.length) }</span>
@@ -175,8 +182,7 @@ export default function Doctors() {
             }));
         }
 
-        setShowNewDoctor(false);
-        setShowDoctorDetail(true);
+        setShow('doctorDetail');
     }
 
     const removeDoctor = () => {
@@ -220,13 +226,37 @@ export default function Doctors() {
             // Remove from state
             const newDoctors = doctors.filter(doctor => doctor.pk !== pk);
             setDoctors(newDoctors);
-            setShowDoctorDetail(false);
+            hide();
             setDoctorDetail(null);
         } catch (error) {
             console.log(error);
             setAlertData({
                 show: true,
                 message: 'Nie udało się usunąć lekarza z bazy danych.',
+                header: 'Błąd!'
+            });
+        }
+    }
+
+    const editDoctor = async (name) => {
+        try {
+            const pk = doctorDetail.pk;
+            const url = `/unit/${unit.pk}/doctors/${pk}/`;
+            await axiosInstance.patch(url, {
+                name: name
+            })
+            doctors.find(d => d.pk === pk).name = name;
+            setDoctorDetail((prevState) => ({
+                ...prevState,
+                name: name
+            }));
+            setShow('doctorDetail');
+        } catch (error) {
+            console.log(error);
+            setAlertData({
+                show: true,
+                message: ("Modyfikacja lekarza nie powiodła się. " +
+                    "Baza danych nie została zaktualizowana."),
                 header: 'Błąd!'
             });
         }
@@ -240,14 +270,12 @@ export default function Doctors() {
                 name: name
             });
             const doctor = response.data;
-            console.log(doctor);
 
             // Add doctor to state.
             const newDoctors = [...doctors, doctor];
             setDoctors(newDoctors);
             setDoctorDetail(doctor);
-            setShowNewDoctor(false);
-            setShowDoctorDetail(true);
+            setShow('doctorDetail');
 
         } catch (error) {
             console.log(error);
@@ -295,8 +323,7 @@ export default function Doctors() {
             key={0} 
             variant={"add"}
             onClick={() => {
-                setShowNewDoctor(true);
-                setShowDoctorDetail(false);
+                setShow('newDoctor');
             }}
         >
             +
@@ -310,14 +337,14 @@ export default function Doctors() {
     );
 
     const leftCol = (
-        <div className="left-col d-flex justify-content-center">
+        <div className="d-flex justify-content-center">
             <div className="m-5 w-100">
                 {
-                    (!showDoctorDetail && !showNewDoctor) &&
+                    !show &&
                     <h5>Wybierz lekarza, by wyświetlić szczegóły</h5>
                 }
                 {
-                    showDoctorDetail &&
+                    show === 'doctorDetail' &&
                     <React.Fragment>
                         <h4 className="mb-4"><i className="bi bi-person-circle"></i> { doctorDetail.name }</h4>
                         <h6><strong>Statystyki</strong></h6>
@@ -380,7 +407,7 @@ export default function Doctors() {
                         </table>
                         <div className="d-flex justify-content-between mt-4">
                             <button 
-                                onClick={() => {}} 
+                                onClick={() => setShow('editDoctor')} 
                                 className="btn btn-primary mb-3 w-45"
                             >
                                 Edytuj
@@ -395,10 +422,21 @@ export default function Doctors() {
                     </React.Fragment>
                 }
                 {
-                    showNewDoctor &&
+                    show === 'newDoctor' &&
                     <div className="d-flex flex-column mt-4">
-                        <DoctorAddForm 
-                            createDoctor={createDoctor}
+                        <h5>Nowy lekarz</h5>
+                        <DoctorDataForm 
+                            handleData={createDoctor}
+                        />
+                    </div>
+                }
+                {
+                    show === 'editDoctor' &&
+                    <div className="d-flex flex-column mt-4">
+                        <h4 className="mb-4"><i className="bi bi-person-circle"></i> { doctorDetail.name }</h4>
+                        <h5>Nowe dane</h5>
+                        <DoctorDataForm 
+                            handleData={editDoctor}
                         />
                     </div>
                 }
@@ -416,5 +454,12 @@ export default function Doctors() {
         </div>
     );
 
-    return <ColumnLayout leftCol={leftCol} rightCol={rightCol} logoPrimary={unit.name} logoSecondary={"Lekarze"}/>
+    return <ColumnLayout 
+        leftCol={leftCol} 
+        rightCol={rightCol} 
+        logoPrimary={unit.name} 
+        logoSecondary={"Lekarze"}
+        showLeftCol={show}
+        setShowLeftCol={setShow}
+    />
 }

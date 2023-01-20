@@ -14,6 +14,8 @@ export default function DutyTile(props) {
     const doctor = duty.getDoctor();
     const position = duty.getPosition();
 
+    const mobile = window.matchMedia("(max-width: 768px)").matches;
+
 
     const customToggle = React.forwardRef(({children, onClick}, ref) => (
         <div 
@@ -63,7 +65,7 @@ export default function DutyTile(props) {
                 const dutyDates = currentDoctor.getDuties().map(d => d.getDay().number);
                 unsafe = [date-1, date, date+1].some(d => dutyDates.includes(d));
                 options.push(
-                    <Dropdown.Item key={`${date}-${position}-${i}`} eventKey={i} onClick={() => setDoctorOnDuty(duty, currentDoctor)}>{currentDoctor.name} {unsafe && '(zamiana)'}</Dropdown.Item>
+                    <Dropdown.Item key={`${date}-${position}-${i}`} eventKey={i} onClick={() => setDoctorOnDuty(duty, currentDoctor)}>{unsafe && '(zam.)'} {currentDoctor.name}</Dropdown.Item>
                 );
             }
         });
@@ -74,21 +76,25 @@ export default function DutyTile(props) {
         doctorDiv = <div className="duty-tile-on-duty" onClick={() => toggleHighlight(doctor)}>{doctor.name}</div>;
     }
 
-    let colClasses = "border-start border-2 border-light text-light duty-tile ";
+    let colClasses = "border-2 border-light text-light duty-tile ";
     if (highlight === doctor) {
-        colClasses += "highlight";
+        colClasses += "highlight ";
     } else if (highlight && !doctors.includes(highlight)) {
-        colClasses += "outside-preferences";
+        colClasses += "outside-preferences ";
     } else {
-        colClasses += `normal-${position}`;
+        colClasses += `normal-${position} `;
+    }
+
+    if (!mobile) {
+        colClasses += "border-start ";
     }
 
     return (
-        <Col className={colClasses} >
+        <Col md className={colClasses} >
             { doctorDiv }
             <div className="duty-tile-controls">
                 <WithTooltip message="Zmień lekarza">
-                    <Dropdown drop="end">
+                    <Dropdown align={mobile ? "end" : "start"} drop={mobile ? "down" : "end"}>
                         <Dropdown.Toggle as={customToggle} />
                         <Dropdown.Menu as={customMenu} className="duty-tile-dropdown">
                             {options}

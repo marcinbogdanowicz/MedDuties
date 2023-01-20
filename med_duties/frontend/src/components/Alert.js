@@ -16,7 +16,7 @@ export default function Alert(props) {
 
     if (show) {
         return (
-            <BootstrapAlert className="position-absolute top-0 start-50 translate-middle-x mt-5 border pointer alert-custom"
+            <BootstrapAlert className="position-fixed start-50 translate-middle-x border pointer alert-custom"
                 key={'info'} variant={props.variant ? props.variant : 'info'} onClick={handleClose} dismissible>
                 <BootstrapAlert.Heading>{props.header ? props.header : 'Uwaga!'}</BootstrapAlert.Heading>
                 {props.children}

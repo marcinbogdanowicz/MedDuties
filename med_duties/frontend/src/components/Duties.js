@@ -32,7 +32,7 @@ export default function Duties() {
 
     const [unit, schedulesData] = useLoaderData();
     const [schedules, setSchedules] = useState([]);
-    const [showScheduleDetails, setShowScheduleDetails] = useState(false);
+    const [show, setShow] = useState('');
     const [scheduleDetails, setScheduleDetails] = useState({
         pk: 0,
         monthandyear: '0/0',
@@ -48,7 +48,6 @@ export default function Duties() {
         dutiesPerDoctor: 0,
         doctorData: null
     });
-    const [showNewSchedule, setShowNewSchedule] = useState(false);
     const [newSchedule, setNewSchedule] = useState({
         month: 0,
         monthMessage: '',
@@ -61,7 +60,10 @@ export default function Duties() {
         message: '',
         header: ''
     });
-    const [showSpinner, setShowSpinner] = useState(false);
+    const [spinnerData, setSpinnerData] = useState({
+        show: false,
+        content: []
+    });
 
     useEffect(() => {
         const s = schedulesData.map(data => {
@@ -75,14 +77,17 @@ export default function Duties() {
         setSchedules(schedulesData);
     }, []);
 
+    const hide = () => {
+        setShow('');
+    }
+
     async function getDetails(event) {
         const [month, year] = event.target.innerHTML.split('/');
         // Prevent fetching stored data again.
         if (scheduleDetails) {
             const [currentMonth, currentYear] = scheduleDetails.monthandyear.split('/');
             if (currentMonth === month && currentYear === year) {
-                setShowNewSchedule(false);
-                setShowScheduleDetails(true);
+                setShow('scheduleDetails')
                 return;
             }
         }
@@ -93,8 +98,7 @@ export default function Duties() {
             const data = _getScheduleData(response);
 
             setScheduleDetails(data);
-            setShowNewSchedule(false);
-            setShowScheduleDetails(true);
+            setShow('scheduleDetails')
         } catch (error) {
             console.log(error);
             setErrorMessage('Błąd pobierania danych.');
@@ -177,7 +181,7 @@ export default function Duties() {
         }
 
         // Show spinner.
-        setShowSpinner(true);
+        showSpinner('Tworzę grafik...', 'Sprawdzam kalendarz...', 'Rysuję tabele...');
 
         // Create new duties
         const monthLength = new Date(year, month, 0).getDate()
@@ -211,12 +215,11 @@ export default function Duties() {
             const newDetails = _getScheduleData(response);
             setSchedules(newSchedules);
             setScheduleDetails(newDetails);
-            setShowNewSchedule(false);
-            setShowScheduleDetails(true);
-            setShowSpinner(false);
+            setShow('scheduleDetails');
+            hideSpinner();
         } catch (error) {
             console.log(error);
-            setShowSpinner(false);
+            hideSpinner();
             setErrorMessage('Nie udało się utworzyć grafiku.');
         }
     }
@@ -227,11 +230,6 @@ export default function Duties() {
             monthMessage: '',
             yearMessage: ''
         }));
-    }
-
-    const changeToNew = () => {
-        setShowNewSchedule(true);
-        setShowScheduleDetails(false);
     }
 
     const removeSchedule = () => {
@@ -276,7 +274,7 @@ export default function Duties() {
             // Remove from state
             const newSchedules = schedules.filter(schedule => schedule.pk !== pk);
             setSchedules(newSchedules);
-            setShowScheduleDetails(false);
+            hide();
             setScheduleDetails({
                 pk: 0,
                 monthandyear: '0/0',
@@ -303,6 +301,20 @@ export default function Duties() {
             ...prevState,
             show: false
         }));
+    }
+
+    const showSpinner = (...content) => {
+        setSpinnerData({
+            show: true,
+            content: content
+        });
+    }
+
+    const hideSpinner = () => {
+        setSpinnerData({
+            show: false,
+            content: []
+        })
     }
 
     const table = (
@@ -335,7 +347,7 @@ export default function Duties() {
         <ScheduleTile 
             key={0} 
             variant={"add"}
-            onClick={changeToNew}
+            onClick={() => setShow('newSchedule')}
         >
             +
         </ScheduleTile>
@@ -458,23 +470,30 @@ export default function Duties() {
     );
 
     const leftCol = (
-            <div className="left-col d-flex justify-content-center">
+            <div className="d-flex justify-content-center">
                 <div className="m-5 w-100">
                     {
-                        showScheduleDetails && scheduleDetailsView                        
+                        show === 'scheduleDetails' && scheduleDetailsView
                     }
                     {
-                        showNewSchedule && newScheduleView
+                        show === 'newSchedule' && newScheduleView
                     }
                     {
-                        (!showNewSchedule && !showScheduleDetails) &&
+                        !show &&
                         <h5>Wybierz grafik by wyświetlić szczegóły</h5>
                     }
                 </div>
             { errorMessage && <Alert>{errorMessage}</Alert> }
-            <OverlaySpinner show={showSpinner} />
+            <OverlaySpinner show={spinnerData.show} content={spinnerData.content} />
         </div>
     );
 
-    return <ColumnLayout leftCol={leftCol} rightCol={rightCol} logoPrimary={unit.name} logoSecondary={"Grafiki dyżurów"}/>
+    return <ColumnLayout 
+        leftCol={leftCol} 
+        rightCol={rightCol} 
+        logoPrimary={unit.name} 
+        logoSecondary={"Grafiki dyżurów"}
+        showLeftCol={show}
+        setShowLeftCol={setShow}
+    />
 }

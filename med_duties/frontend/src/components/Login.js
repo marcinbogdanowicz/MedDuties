@@ -9,12 +9,12 @@ import MenuRow from './MenuRow';
 
 export default function Login() {
     const navigate = useNavigate();
-    
     const [userData, setUserData] = React.useState({
         username: '',
         password: '',
     });
     const [message, setMessage] = React.useState('');
+    const mobile = window.matchMedia("(max-width: 768px)").matches;
 
     const inputHandler = (event) => {
         const { name, value } = event.target;
@@ -37,7 +37,7 @@ export default function Login() {
     }
 
     return (
-        <MenuRow addedClass="login-register">
+        <MenuRow addedClass={mobile ? "login-register-mobile" : "login-register"}>
             <Form onSubmit={handleSubmit}>
                 <h2 className="mb-5">Logowanie</h2>
                 <Form.Group className="mb-3">

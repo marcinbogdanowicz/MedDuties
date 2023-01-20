@@ -122,7 +122,6 @@ class Doctor {
         this.restorePreferredDays = this.restorePreferredDays.bind(this);
         this.restorePreferredPositions = this.restorePreferredPositions.bind(this);
         this.restorePreferredWeekdays = this.restorePreferredWeekdays.bind(this);
-        this.getChangedSettings = this.getChangedSettings.bind(this);
         this.getStatistics = this.getStatistics.bind(this);
 
         this._getPreviousMonthModfiers = this._getPreviousMonthModfiers.bind(this);
@@ -599,37 +598,6 @@ class Doctor {
 
     restorePreferredWeekdays() {
         this.preferredWeekdays = [...this.#preferredWeekdaysInit];
-    }
-
-    getChangedSettings() {
-        const changes = {};
-
-        const maxDutiesDiff = this.maxNumberOfDuties - this.#maxNumberOfDutiesInit;
-        if (maxDutiesDiff) {
-            changes.maxNumberOfDuties = maxDutiesDiff;
-        }
-
-        const exceptionsDiff = getDiff(this.exceptions, this.#exceptionsInit);
-        if (exceptionsDiff.length > 0) {
-            changes.exceptions = exceptionsDiff;
-        }
-
-        const preferredDaysDiff = getDiff(this.preferredDays, this.#preferredDaysInit);
-        if (preferredDaysDiff.length > 0) {
-            changes.preferredDays = preferredDaysDiff;
-        }
-
-        const preferredPositionsDiff = getDiff(this.preferredPositions, this.#preferredPositionsInit);
-        if (preferredPositionsDiff.length > 0) {
-            changes.preferredPositions = preferredPositionsDiff;
-        }
-
-        const preferredWeekdaysDiff = getDiff(this.preferredWeekdays, this.#preferredWeekdaysInit);
-        if (preferredWeekdaysDiff.length > 0) {
-            changes.preferredWeekdays = preferredWeekdaysDiff;
-        }
-
-        return changes;
     }
 
     getStatistics() {

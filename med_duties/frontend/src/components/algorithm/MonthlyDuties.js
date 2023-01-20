@@ -89,10 +89,6 @@ class MonthlyDuties {
         this._assignDuties = this._assignDuties.bind(this);
         this._checkForMissingDuties = this._checkForMissingDuties.bind(this);
         this._checkForForbiddenDuties = this._checkForForbiddenDuties.bind(this);
-        this._raiseMaxDuties = this._raiseMaxDuties.bind(this);
-        this._addAcceptedWeekdays = this._addAcceptedWeekdays.bind(this);
-        this._cutExceptions = this._cutExceptions.bind(this);
-        this._addAcceptedPositions = this._addAcceptedPositions.bind(this);
         this._log = this._log.bind(this);
         this._clearLog = this._clearLog.bind(this);
         this.getStatistics = this.getStatistics.bind(this);
@@ -224,6 +220,7 @@ class MonthlyDuties {
     updatePreferences(includeDuties=false) {
         const preferences = {};
 
+        // Create template - each doctor prefers all days on all positions.
         this.days.forEach(day => {
             const preferencePerPosition = {};
 
@@ -233,6 +230,7 @@ class MonthlyDuties {
             preferences[day.number] = preferencePerPosition;
         });
 
+        // Delete non-existent preferences.
         this.doctors.forEach(doctor => {
             const exceptions = doctor.getExceptions();
             const prefPositions = doctor.getPreferredPositions();
@@ -248,6 +246,7 @@ class MonthlyDuties {
                 const adjacentPrefDay = (
                     prefDays.includes(date + 1) || prefDays.includes(date - 1)
                 );
+
                 for (const position of this.dutyPositions) {
                     if (adjacentPrefDay) {
                         preferences[date][position] = (
@@ -278,6 +277,7 @@ class MonthlyDuties {
             }
         });
 
+        // Also save all doctors who can take duty on any position of each day.
         for (const day of this.days) {
             preferences[day.number]['all'] = [...new Set(
                 Object.values(preferences[day.number])
@@ -285,6 +285,7 @@ class MonthlyDuties {
             )];
         }
 
+        // Save and return.
         this.preferences = preferences;
 
         return preferences;
@@ -824,6 +825,7 @@ class MonthlyDuties {
         // Keep looping until all duties are filled.
         while (true) {
             console.log(`Steps: ${steps}. Frontier: ${frontier.frontier.length}`);     // TESTING
+            console.log(this.preferences);
 
             // If frontier is empty, there is no solution.
             if (frontier.empty()) {
@@ -856,7 +858,6 @@ class MonthlyDuties {
             if (steps > 1000) {
                 // Assign best combination achieved and set it.
                 this._assign(best.state);
-                console.log(this.getStatistics());
                 break;
             }
         }
@@ -906,23 +907,25 @@ class MonthlyDuties {
 
     _options(prevState, prevMetadata) {
         const duties = prevState;
+            /* If nodes contained only day number and doctors for each position,
+            duties (whole state) could be computed here or after the node
+            is selected. This way a lot less full states would be generated
+            that are never used. */
+
         const preferences = this._getActualPreferences(duties);
         const date = this._getNextDay(preferences);
-
-        // Check if there are enough doctors to form options for all positions.
-        if (preferences[date]['all'].length < this.dutyPositions.length) {
-            return [[null, null]];
-        }
-
         const day = this.getDay(date);
         const doctors = preferences[date]['all'];
 
+        // Check if there are enough doctors to form options for all positions.
+        if (doctors.length < this.dutyPositions.length) {
+            return [[null, null]];
+        }
+
         // Get each doctor's strain for current day.
         const strains = new Map();
-
         for (const doctor of doctors) {
             const doctorStrains = {};
-
             for (const position of this.dutyPositions) {
                 const evaluationChart = doctor.evaluateDuties(duties, position);
                 if (!evaluationChart) {
@@ -933,10 +936,17 @@ class MonthlyDuties {
             }
             strains.set(doctor, doctorStrains);
         }
+            /* Preferences could be now sorted by doctors' strains.
+            This way combinations would be also sorted from the beginning.
+            This would require doctors' evaluations to replace sorting
+            which takes place at the end of this method (by considering
+            the same factors).
+            (This will not enable sorting doctors' combinations by uniqueness,
+            but it still is a performance improvement;
+            maybe this could be handled in evaluation method improvement). */
 
-        // Prepare a list of doctors lists.
-        // If duty is set on any position, put only this doctor
-        // on this position's list.
+        // Prepare a list of lists of doctors per each position
+        // to be used for getting combinations.
         const todaysPreferences = [];
         const todaysDuties = this.duties.get(day);
         for (const position of this.dutyPositions) {
@@ -944,8 +954,11 @@ class MonthlyDuties {
             if (!doctor) {
                 todaysPreferences.push(preferences[date][position]);
             } else {
+                // If duty is set on any position, put only this doctor
+                // on this position's list.
                 todaysPreferences.push([doctor]);
-                // Make sure doctor's strain values are stored.
+                // Make sure doctor's strain values are stored
+                // (doctor can be manually set outside his preferences).
                 const docPosition = position;
                 const docStrains = {};
                 for (const pos of this.dutyPositions) {
@@ -982,6 +995,8 @@ class MonthlyDuties {
             metadata.addedDoctors = option;
             return [metadata, option];
         });
+            /* Only new strain could be stored (along with new doctors);
+            the rest could be computed after the node is selected. */
 
         // Make sure strains higher than 10000 (at least one impossible duty)
         // are not included.
@@ -996,6 +1011,7 @@ class MonthlyDuties {
                 result = result.slice(0, i+1).concat(result.slice(i+1, result.length));
             }
         }
+            /* This should be hanled before combinations are created. */
 
         // Make sure each combination allows for next day to be set.
         if (date < this.days.length && !preferences[date + 1].isSet) {
@@ -1032,10 +1048,11 @@ class MonthlyDuties {
             state.set(day, dailyDuties);
             return [metadata, state];
         });
+            /* Unnecessary and resource-consuming. */
 
         // Sort combinations by strain, max duties and 
         // - on weekends - on number of weekend duties 
-        // after the option is chosen, prefering the latter. 
+        // after the option is chosen, preferring the latter. 
         // Shuffle them first to avoid setting patterns.
         shuffle(result);
         result.sort(([metadataA, stateA], [metadataB, stateB]) =>
@@ -1061,6 +1078,8 @@ class MonthlyDuties {
                 return weekendsB - weekendsA;
             });
         }
+            /* This - or most of it - should be handled
+            by doctor's evaluation. */
 
         return result;
     }
@@ -1071,6 +1090,11 @@ class MonthlyDuties {
 
         const preferences = {...prefs};
 
+        // Throw error if all duties are set.
+        if (Object.values(preferences).every(p => p.isSet === true)) {
+            throw Error('Duties are set - there is no next day!');
+        }
+
         // Remove days with set duties.
         const dates = Object.keys(preferences).map(d => parseInt(d));
         for (const date of dates) {
@@ -1079,12 +1103,7 @@ class MonthlyDuties {
             }
         }
 
-        // Throw error if all duties are set.
-        if (Object.values(preferences).every(p => p.isSet === true)) {
-            throw Error('Duties are set - there is no next day!');
-        }
-
-        // Sort preferences.
+        // Sort preferences (days) by avg number of doctors for each position.
         const getAvg = (positions) => {
             const avg = (
                 Object.entries(positions)
@@ -1115,6 +1134,7 @@ class MonthlyDuties {
         /* Returns preferences object with marked set days
         and filtered out doctors from adjacent set duties. */
 
+        // Copy preferences so that this.preferences is not affected.
         const preferences = {};
         Object.entries(this.preferences).forEach(([day, data]) => {
             preferences[day] = {...data};
@@ -1258,161 +1278,11 @@ class MonthlyDuties {
         }
     }
 
-    _raiseMaxDuties() {
-        // Choose doctors who prefer more than 3 weekdays.
-        // Those who prefer less have automatically lowered max number
-        // of duties to match number of available days.
-        /*const doctors = this.doctors.filter(doctor => {
-            const preferredWeekdays = doctor.getPreferredWeekdays();
-            const maxDuties = doctor.getMaxNumberOfDuties();
-            if (preferredWeekdays.length > 3 && maxDuties < 15 && !doctor.isLocked()) {
-                return doctor;
-            }
-        });
-
-        if (doctors.length > 0) {
-            const byMaxDuties = (docA, docB) => {
-                return (docA.getMaxNumberOfDuties()
-                    - docB.getMaxNumberOfDuties());
-            }
-            shuffle(doctors);
-            doctors.sort(byMaxDuties);
-
-            const chosenDoctor = doctors[0];
-
-            const maxDuties = chosenDoctor.getMaxNumberOfDuties();
-            chosenDoctor.setMaxNumberOfDuties(maxDuties+1);
-        } else {*/
-            for (const doctor of this.doctors) {
-                const maxDuties = doctor.getMaxNumberOfDuties();
-                if (doctor.isLocked() || maxDuties >= 16) {
-                    continue;
-                }
-                doctor.setMaxNumberOfDuties(maxDuties+1);
-            }
-        //}
-    }
-
-    _addAcceptedWeekdays() {
-        const doctors = this.doctors.filter(doctor => {
-            const preferredWeekdays = doctor.getPreferredWeekdays();
-            if (preferredWeekdays.length < 7 && !doctor.isLocked()) {
-                return doctor;
-            }
-        });
-
-        if (doctors.length > 0) {
-            shuffle(doctors);
-            const byPreferredWeekdays = (docA, docB) => {
-                return (docA.getPreferredWeekdays()
-                    - docB.getPreferredWeekdays());
-            };
-            doctors.sort(byPreferredWeekdays);
-            const chosenDoctor = doctors[0];
-
-            const preferredWeekdays = chosenDoctor.getPreferredWeekdays();
-            const otherWeekdays = range(7).filter(weekday => 
-                !preferredWeekdays.includes(weekday));
-            shuffle(otherWeekdays);
-            const newPreferredWeekdays = [...preferredWeekdays, otherWeekdays[0]];
-            newPreferredWeekdays.sort();
-
-            chosenDoctor.setPreferredWeekdays(newPreferredWeekdays);
-        }
-    }
-
-    _cutExceptions() {
-        // Prevents excessive exception use.
-        for (const doctor of this.doctors) {
-            if (doctor.isLocked()) {
-                continue;
-            }
-            const exceptions = doctor.getExceptions();
-            if (exceptions.length > 5) {
-                shuffle(exceptions);
-                doctor.setExceptions(exceptions.slice(0,5));
-            }
-        }
-    }
-
-    _addAcceptedPositions() {
-        let docs = [];
-        for (let numberOfPositions = 1; 
-                numberOfPositions < this.dutyPositions.length; 
-                numberOfPositions++) {
-            const filteredDocs = this.doctors.filter(doctor => {
-                const preferredPositions = doctor.getPreferredPositions();
-                if (preferredPositions.length === numberOfPositions) {
-                    return doctor;
-                }
-            });
-            docs = docs.concat(filteredDocs);
-        }
-
-        if (docs.length > 0) {
-            for (const doctor of docs) {
-                const preferredPositions = doctor.getPreferredPositions();
-                const otherPositions = this.dutyPositions.filter(position => {
-                    return !preferredPositions.includes(position);
-                });
-                shuffle(otherPositions);
-                const newPosition = otherPositions[0];
-                const newPositions = [...preferredPositions, newPosition];
-                doctor.setPreferredPositions(newPositions);
-            }
-        }
-    }
-
     clearDuties(clearUserSetToo=false) {
         for (const doctor of this.doctors) {
             doctor.clearDuties(clearUserSetToo);
             doctor.clearStrain(clearUserSetToo);
             this._removeDoctorDuties(doctor, clearUserSetToo);
-        }
-    }
-
-    _createChangesLog() {
-        for (const doctor of this.doctors) {
-            const changes = doctor.getChangedSettings();
-
-            if (Object.keys(changes).length > 0) {
-                this._log(`${doctor.name.toUpperCase()}`);
-
-                if ('maxNumberOfDuties' in changes) {
-                    const newMaxDuties = doctor.getMaxNumberOfDuties();
-                    const oldMaxDuties = changes.maxNumberOfDuties;
-                    this._log(`[RMD-${doctor.pk}] - ` +
-                        `Podniesiono maksymalną liczbę dyżurów ` +
-                        `o ${oldMaxDuties} do ${newMaxDuties}.`)
-                }
-
-                if ('exceptions' in changes) {
-                    const newExceptions = doctor.getExceptions();
-                    const removedExceptions = changes.exceptions;
-                    const allExceptions = newExceptions.concat(removedExceptions);
-                    this._log(`[CE-${doctor.pk}] - ` +
-                        `Usunięto z zastrzeżeń dni: ${removedExceptions}, ` +
-                        `pozostawiając: ${newExceptions}.`);
-                }
-
-                if ('preferredPositions' in changes) {
-                    const newPositions = doctor.getPreferredPositions();
-                    const addedPositions = changes.preferredPositions;
-                    this._log(`[AAP-${doctor.pk}] - ` +
-                        `Dodano akceptowane pozycje dyżurowe: ` +
-                        `${addedPositions.join(', ')} `+
-                        `(łacznie ${newPositions.join(', ')}).`);
-                }
-
-                if ('preferredWeekdays' in changes) {
-                    const newWeekdays = doctor.getPreferredWeekdays();
-                    const addedWeekdays = changes.preferredWeekdays;
-                    this._log(`[AAW-${doctor.pk}] - ` +
-                        `Dodano akceptowane dni tygodnia: ` +
-                        `${addedWeekdays.map(d => WEEKDAY_NAMES[d]).join(', ')} ` +
-                        `(łącznie ${newWeekdays.map(d => WEEKDAY_NAMES[d]).join(', ')}).`);
-                }
-            }
         }
     }
 

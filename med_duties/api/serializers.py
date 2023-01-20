@@ -103,6 +103,12 @@ class DoctorSerializer(serializers.ModelSerializer):
         return doctor
 
     def update(self, instance, validated_data):
+        request = self.context['request']
+        new_unit = validated_data.get('unit', None)
+        if ((request.method == "PUT" or request.method == "PATCH")
+                and new_unit and new_unit != instance.unit):
+            raise exceptions.PermissionDenied(
+                "Doctors cannot change unit.")
 
         for name, attr in validated_data.items():
             setattr(instance, name, attr)
