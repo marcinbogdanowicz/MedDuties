@@ -51,7 +51,7 @@ export default function Register() {
         const acceptedDutyPositions = [1,2,3];
         if (registerData.dutyPositions === '') {
             newErrors.dutyPositions = "Proszę podać liczbę lekarzy na dyżur.";
-        } else if (!(registerData.dutyPositions in acceptedDutyPositions)) {
+        } else if (!acceptedDutyPositions.includes(parseInt(registerData.dutyPositions))) {
             newErrors.dutyPositions = "Obługiwany grafik dla 1 do 3 lekarzy na dyżur.";
         }
 

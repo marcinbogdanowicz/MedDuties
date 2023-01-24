@@ -269,6 +269,9 @@ export default function DutiesSetter() {
                     }));
                 }
 
+                // Clear non-user-set duties.
+                appData.monthlyDuties.clearDuties();
+
                 // Update duties in monthly duties.
                 for (const dutyData of result.duties) {
                     const day = appData.monthlyDuties.getDay(dutyData.day);

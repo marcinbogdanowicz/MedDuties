@@ -801,26 +801,20 @@ class MonthlyDuties {
         }
     }
 
-    _assignDuties() {
+    _assignDuties(depth=2) {
         // Get doctors, who can take each duty on each day.
         this.updatePreferences(true);
 
         // Initialize frontier.
-        const initState = new Map();
-        for (const day of this.days) {
-            const dailyDuties = {};
-            for (const position of this.dutyPositions) {
-                dailyDuties[position] = new Duty(day, null, position, day.strainPoints, null, false);
-            }
-            initState.set(day, dailyDuties);
-        }
-        const initMeta = {daysSet: 0, totalStrain: 0, addedStrain: 0, addedDoctors: []};
-        const initNode = new Node(initState, null, initMeta);
+        const initState = null;
+        const initAction = {day: null, strain: 0};
+        const initNode = new Node(initState, null, initAction);
         const frontier = new StackFrontier();
         frontier.addToFront(initNode);
 
-        let steps = 0;
         let best = null;
+
+        let steps = 0;
 
         // Keep looping until all duties are filled.
         while (true) {
@@ -835,32 +829,66 @@ class MonthlyDuties {
             // Remove a node from frontier.
             const node = frontier.remove();
 
+            // Get full state from node's state.
+            const [state, meta] = this._getStateData(node);
+
             // If node contains all duties, set them.
-            if (this._dutiesAreSet(node.state)) {
-                this._assign(node.state);
+            if (this._dutiesAreSet(state)) {
+                this._assign(state);
                 break;
             }
 
             // If node is best we got, save it.
-            if (this._isBetter(node, best)) {
-                best = node;
+            if (this._isBetter(meta, best)) {
+                best = {state: state, meta: meta};
             }
 
             // Expand current node and add new options to frontier.
-            this._options(node.state, node.metadata).forEach(([metadata, state], index) => {
-                if (metadata !== null && state !== null) {
-                    const child = new Node(state, node, metadata);
+            this._options(state, depth).forEach(([action, state], index) => { // Check after forEach
+                if (action !== null && state !== null) {
+                    const child = new Node(state, node, action);
                     frontier.addToFront(child);
                 }
             });
 
             steps++;
-            if (steps > 1000) {
+            if (steps > (2 * this.days.length) && (depth * this.dutyPositions.length) < this.doctors.length) {
+                this._assignDuties(depth+1);
+                break;
+            } else if (steps > 1000) {
                 // Assign best combination achieved and set it.
                 this._assign(best.state);
                 break;
             }
         }
+    }
+
+    _getStateData(n) {
+        // Create state template.
+        const state = new Map();
+        for (const day of this.days) {
+            const dailyDuties = {};
+            for (const position of this.dutyPositions) {
+                dailyDuties[position] = new Duty(day, null, position, day.strainPoints, null, false);
+            }
+            state.set(day, dailyDuties);
+        }
+
+        // Go down nodes path and set duties they contain.
+        let node = n;
+        let strain = 0;
+        let daysSet = 0;
+        while (node.action.day) {
+            const duties = state.get(node.action.day);
+            for (const position of this.dutyPositions) {
+                duties[position].setDoctor(node.state[position-1]);
+            }
+            strain += node.action.strain;
+            node = node.parent;
+            daysSet++;
+        }
+
+        return [state, {strain: strain, daysSet: daysSet}];
     }
 
     _dutiesAreSet(state) {
@@ -890,14 +918,14 @@ class MonthlyDuties {
         }
     }
 
-    _isBetter(node, best) {
+    _isBetter(meta, best) {
         if (!best) {
             return true;
         }
-        const daysSet = node.metadata.daysSet;
-        const strain = node.metadata.totalStrain;
-        const bestDaysSet = best.metadata.daysSet;
-        const bestStrain = best.metadata.totalStrain;
+        const daysSet = meta.daysSet;
+        const strain = meta.strain;
+        const bestDaysSet = best.meta.daysSet;
+        const bestStrain = best.meta.strain;
         if (daysSet > bestDaysSet) {
             return true;
         } else if (daysSet === bestDaysSet && strain < bestStrain) {
@@ -905,13 +933,8 @@ class MonthlyDuties {
         }
     }
 
-    _options(prevState, prevMetadata) {
+    _options(prevState, depth) {
         const duties = prevState;
-            /* If nodes contained only day number and doctors for each position,
-            duties (whole state) could be computed here or after the node
-            is selected. This way a lot less full states would be generated
-            that are never used. */
-
         const preferences = this._getActualPreferences(duties);
         const date = this._getNextDay(preferences);
         const day = this.getDay(date);
@@ -922,12 +945,27 @@ class MonthlyDuties {
             return [[null, null]];
         }
 
+        const a = Date.now();
+        console.log(`Depth: ${depth}`);
+        console.log("0 ms (0 ms) - START - result: 0 el");
+
         // Get each doctor's strain for current day.
+        const avgDuties = (
+            this.doctors.length 
+            / (this.dutyPositions.length * this.days.length));
+        const avgMaxDuties = (
+            this.doctors.reduce((prevVal, doc) => 
+                prevVal + doc.getMaxNumberOfDuties(), 0) 
+            / this.doctors.length);
         const strains = new Map();
         for (const doctor of doctors) {
             const doctorStrains = {};
             for (const position of this.dutyPositions) {
-                const evaluationChart = doctor.evaluateDuties(duties, position);
+                let maxDutiesFactor = Math.ceil(
+                    avgDuties 
+                    * (doctor.getMaxNumberOfDuties() / avgMaxDuties));
+                maxDutiesFactor < avgDuties && (maxDutiesFactor = avgDuties);
+                const evaluationChart = doctor.evaluateDuties(duties, position, maxDutiesFactor);
                 if (!evaluationChart) {
                     doctorStrains[position] = 10000; // No duties left.
                     continue;
@@ -936,14 +974,8 @@ class MonthlyDuties {
             }
             strains.set(doctor, doctorStrains);
         }
-            /* Preferences could be now sorted by doctors' strains.
-            This way combinations would be also sorted from the beginning.
-            This would require doctors' evaluations to replace sorting
-            which takes place at the end of this method (by considering
-            the same factors).
-            (This will not enable sorting doctors' combinations by uniqueness,
-            but it still is a performance improvement;
-            maybe this could be handled in evaluation method improvement). */
+        const b = Date.now();
+        console.log(`${b-a} ms (${b-a} ms) - got strains - result: 0 el`);
 
         // Prepare a list of lists of doctors per each position
         // to be used for getting combinations.
@@ -952,7 +984,13 @@ class MonthlyDuties {
         for (const position of this.dutyPositions) {
             const doctor = todaysDuties[position].getDoctor();
             if (!doctor) {
-                todaysPreferences.push(preferences[date][position]);
+                let prefs = preferences[date][position].filter(doc => strains.get(doc)[position] < 10000);
+                prefs.sort((docA, docB) => {
+                    const strainA = strains.get(docA)[position];
+                    const strainB = strains.get(docB)[position];
+                    return strainA - strainB
+                });
+                todaysPreferences.push(prefs.slice(0, this.dutyPositions.length * depth));
             } else {
                 // If duty is set on any position, put only this doctor
                 // on this position's list.
@@ -971,52 +1009,38 @@ class MonthlyDuties {
                 strains.set(doctor, docStrains);
             }
         }
+        const c = Date.now();
+        console.log(`${c-b} ms (${c-a} ms) - got list of lists for combinations - result: 0 el`);
 
         // Get unique doctor's combinations
         // (they respect preferred positions).
         let result = (
-            [...new Set(
-                [...new CartesianProduct(...todaysPreferences)]
-                .filter(elem => new Set(elem).size === elem.length)
-            )]
+            [...new CartesianProduct(...todaysPreferences)]
+            .filter(elem => new Set(elem).size === elem.length)
         );
 
-        // Add sum of strains to each combination. Store it with metadata.
+        const d = Date.now();
+        console.log(`${d-c} ms (${d-a} ms) - got combinations - result: ${result.length} el`);
+
+
+        // Add action to each combination.
         result = result.map(option => {
             let strain = 0;
             option.forEach((doctor, i) => {
                 const position = i+1;
                 strain += strains.get(doctor)[position];
             });
-            const metadata = {...prevMetadata};
-            metadata.daysSet++;
-            metadata.totalStrain += strain;
-            metadata.addedStrain = strain;
-            metadata.addedDoctors = option;
-            return [metadata, option];
+            const action = {day: day, strain: strain};
+            return [action, option];
         });
-            /* Only new strain could be stored (along with new doctors);
-            the rest could be computed after the node is selected. */
 
-        // Make sure strains higher than 10000 (at least one impossible duty)
-        // are not included.
-        result = result.filter(([metadata, option]) => metadata.addedStrain < 10000);
-
-        // Keep only combinations of unique doctors.
-        for (let i = 0; i < result.length-1; i++) {
-            const thisOption = result[i][1];
-            const nextOption = result[i+1][1];
-            const together = new Set(thisOption.concat(nextOption));
-            if (together.size !== thisOption.length + nextOption.length) {
-                result = result.slice(0, i+1).concat(result.slice(i+1, result.length));
-            }
-        }
-            /* This should be hanled before combinations are created. */
+        const e = Date.now();
+        console.log(`${e-d} ms (${e-a} ms) - added actions to combinations - result: ${result.length} el`);
 
         // Make sure each combination allows for next day to be set.
         if (date < this.days.length && !preferences[date + 1].isSet) {
             const nextDayDocs = preferences[date + 1]['all'].filter(d => d.getNumberOfDutiesLeft() > 0);
-            result = result.filter(([metadata, option]) => {
+            result = result.filter(([action, option]) => {
                 const difference = nextDayDocs.filter(d => !option.includes(d));
                 if (difference.length >= this.dutyPositions.length) {
                     return true;
@@ -1027,7 +1051,7 @@ class MonthlyDuties {
         // Make sure each combination allows for previous day to be set.
         if (date > 1 && !preferences[date - 1].isSet) {
             const prevDayDocs = preferences[date - 1]['all'].filter(d => d.getNumberOfDutiesLeft() > 0);
-            result = result.filter(([metadata, option]) => {
+            result = result.filter(([action, option]) => {
                 const difference = prevDayDocs.filter(d => !option.includes(d));
                 if (difference.length >= this.dutyPositions.length) {
                     return true;
@@ -1036,48 +1060,47 @@ class MonthlyDuties {
             });
         }
 
-        // Make sure there is full state in each resulting element.
-        result = result.map(([metadata, option]) => {
-            const state = new Map(prevState);
-            const dailyDuties = {};
-            for (const position of this.dutyPositions) {
-                const doctor = option[position-1];
-                dailyDuties[position] = new Duty(
-                    day, doctor, position, strains.get(doctor)[position], null, false);
-            }
-            state.set(day, dailyDuties);
-            return [metadata, state];
-        });
-            /* Unnecessary and resource-consuming. */
+        const f = Date.now();
+        console.log(`${f-e} ms (${f-a} ms) - erased combinations that would interfere with adjacent days - result: ${result.length} el`);
 
-        // Sort combinations by strain, max duties and 
-        // - on weekends - on number of weekend duties 
-        // after the option is chosen, preferring the latter. 
+        // Sort combinations by strain, /*max duties and 
+        // - on weekends - by number of weekend duties 
+        // after the option is chosen, preferring the latter.*/
+        // Best combinations need to be last.
         // Shuffle them first to avoid setting patterns.
         shuffle(result);
-        result.sort(([metadataA, stateA], [metadataB, stateB]) =>
-            metadataB.addedStrain - metadataA.addedStrain);
-        result.sort(([metadataA, stateA], [metadataB, stateB]) => {
-            const dutiesA = metadataA.addedDoctors.reduce((prevVal, currVal) => prevVal + currVal.getNumberOfDutiesLeft(duties), 0);
-            const dutiesB = metadataB.addedDoctors.reduce((prevVal, currVal) => prevVal + currVal.getNumberOfDutiesLeft(duties), 0);
-            return dutiesA - dutiesB;
+        result.sort(([actionA, stateA], [actionB, stateB]) =>
+            actionB.strain - actionA.strain);
+        const g = Date.now();
+        console.log(`${g-f} ms (${g-a} ms) - sorted by strains - FINISHED - result: ${result.length} el`);
+        /*result.sort(([actionA, stateA], [actionB, stateB]) => {
+            const dutiesA = stateA.reduce((prevVal, currVal) => prevVal + currVal.getNumberOfDutiesLeft(duties), 0);
+            const dutiesB = stateB.reduce((prevVal, currVal) => prevVal + currVal.getNumberOfDutiesLeft(duties), 0);
+            return dutiesB - dutiesA;
         });
-        result.sort(([metadataA, stateA], [metadataB, stateB]) => {
+        const c = Date.now();
+        console.log(`By duties left (took ${c-b} ms):`);
+        console.log(result.map(([action, state]) => `Strain: ${action.strain}, state: ${state.map(d => d.name)}`));
+        result.sort(([actionA, stateA], [actionB, stateB]) => {
             // Ignoring differences above 12 max duties helps prevent imbalance.
-            const treshold = this.dutyPositions.length * 12;
-            let maxDutiesA = metadataA.addedDoctors.reduce((prevVal, currVal) => prevVal + currVal.getMaxNumberOfDuties(), 0);
+            const treshold = 12;
+            let maxDutiesA = stateA.reduce((prevVal, currVal) => prevVal + currVal.getMaxNumberOfDuties(), 0);
             maxDutiesA > treshold && (maxDutiesA = treshold);
-            let maxDutiesB = metadataB.addedDoctors.reduce((prevVal, currVal) => prevVal + currVal.getMaxNumberOfDuties(), 0);
+            let maxDutiesB = stateB.reduce((prevVal, currVal) => prevVal + currVal.getMaxNumberOfDuties(), 0);
             maxDutiesB > treshold && (maxDutiesB = treshold);
             return maxDutiesB - maxDutiesA;
         });
-        if ([4,5,6].includes(day.weekday)) {
-            result.sort(([metadataA, stateA], [metadataB, stateB]) => {
-                const weekendsA = metadataA.addedDoctors.reduce((prevVal, currVal) => prevVal + currVal.getWeekendsOnDuty(stateA).length, 0);
-                const weekendsB = metadataB.addedDoctors.reduce((prevVal, currVal) => prevVal + currVal.getWeekendsOnDuty(stateB).length, 0);
+        const d = Date.now();
+        console.log(`By max duties (fin) (took ${d-b} ms)`);
+        console.log(result.map(([action, state]) => `Strain: ${action.strain}, state: ${state.map(d => `${d.name}(${d.getMaxNumberOfDuties()})`)}`));
+        console.log(`All took ${d-a} ms`);*/
+        /*if ([4,5,6].includes(day.weekday)) {
+            result.sort(([actionA, stateA], [actionB, stateB]) => {
+                const weekendsA = stateA.reduce((prevVal, currVal) => prevVal + currVal.getWeekendsOnDuty(stateA).length, 0);
+                const weekendsB = stateB.addedDoctors.reduce((prevVal, currVal) => prevVal + currVal.getWeekendsOnDuty(stateB).length, 0);
                 return weekendsB - weekendsA;
             });
-        }
+        }*/
             /* This - or most of it - should be handled
             by doctor's evaluation. */
 
@@ -1370,12 +1393,12 @@ class MonthlyDuties {
 class Node {
     state;
     parent;
-    metadata;
+    action;
 
-    constructor(state, parent, metadata) {
+    constructor(state, parent, action) {
         this.state = state;
         this.parent = parent;
-        this.metadata = metadata;
+        this.action = action;
     }
 }
 

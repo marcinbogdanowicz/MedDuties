@@ -170,13 +170,15 @@ const serializeDuties = (data) => {
     const duties = [];
     for (const dailyDuties of data.values()) {
         for (const duty of Object.values(dailyDuties)) {
-            duties.push({
-                day: duty.day.number,
-                doctor: duty.doctor.getPk(),
-                position: duty.position,
-                strainPoints: duty.strainPoints,
-                setByUser: duty.setByUser,
-            });
+            if (duty.doctor) {
+                duties.push({
+                    day: duty.day.number,
+                    doctor: duty.doctor.getPk(),
+                    position: duty.position,
+                    strainPoints: duty.strainPoints,
+                    setByUser: duty.setByUser,
+                });
+            }
         }
     }
 
