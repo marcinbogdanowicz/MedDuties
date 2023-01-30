@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ToggleButton from 'react-bootstrap/ToggleButton';
 import ToggleButtonGroup from 'react-bootstrap/ToggleButtonGroup';
 import { range, getWeekday } from './algorithm/utils';
 import WithTooltip from './WithTooltip';
+import Day from './algorithm/Day';
 
 
 export default function Calendar(props) {
@@ -17,10 +18,92 @@ export default function Calendar(props) {
     const year = props.year;
     const month = props.month;
     const length = new Date(year, month, 0).getDate();
-    const days = range(1, length+1);
+    const days = range(1, length+1).map(day => new Day(year, month, day));
     const weeks = [];
 
-    
+    const acceptedDays = useRef(new Map(days.map(d => [d.number, true])));
+    const acceptedDaysInitialized = useRef(false);
+
+    const updateAcceptedDays = (prefDays, prefWeekdays, excepts) => {
+        const preferredDays = prefDays || doctorData.preferredDays;
+        const preferredWeekdays = prefWeekdays || doctorData.preferredWeekdays;
+        const exceptions = excepts || doctorData.exceptions;
+
+        // Start fresh.
+        acceptedDays.current = new Map(days.map(d => [d.number, true]));
+
+        for (const day of days) {
+            // Exclude not preferred days on non-preferred weekdays.
+            if (!preferredWeekdays.includes(day.weekday) 
+                    && !preferredDays.includes(day.number)) {
+                acceptedDays.current.set(day.number, false);
+                continue;
+            }
+            // Exclude days adjacent to preferred ones (no double duties).
+            if (preferredDays.includes(day.number)) {
+                console.log(`Day ${day.number} is preferred. Unaccepting ${day.number-1} and ${day.number + 1}`);
+                day.number > 1 && acceptedDays.current.set(day.number - 1, false);
+                day.number < length && acceptedDays.current.set(day.number + 1, false);
+                continue;
+            }
+            // Exclude exceptions.
+            if (exceptions.includes(day.number)) {
+                acceptedDays.current.set(day.number, false);
+            }
+        }
+
+        const accepted = (
+            [...acceptedDays.current.entries()]
+            .filter(([day, accepted]) => accepted)
+            .map(([day, accepted]) => day)
+        );
+
+        for (let i = 0; i < accepted.length; i++) {
+            if (accepted[i] + 1 === accepted[i+1]) {
+                acceptedDays.current.set(accepted[i+1], false);
+                accepted.splice(i+1, 1);
+            }
+        }
+    }
+
+    useEffect(() => {
+        normalizeMaxDuties();
+    }, [doctorData.maxDuties])
+
+    if (doctorData.maxDuties && !acceptedDaysInitialized.current) {
+        updateAcceptedDays(null, null, null);
+        acceptedDaysInitialized.current = true;
+    }
+
+    const normalizeMaxDuties = (prefDays=doctorData.preferredDays.length) => {
+        const count = acceptedDaysCount();
+        console.log(`Accepted days: ${count}`);
+        console.log(`Max duties: ${doctorData.maxDuties}`);
+        console.log(`Pref days: ${prefDays}`);
+        const maxDuties = doctorData.maxDuties;
+        if (maxDuties > count) {
+            setDoctorData((prevState) => ({
+                ...prevState,
+                maxDuties: count,
+            }));
+            setMessage((`Maksymalna liczba dyżurów przekraczała ` +
+                `liczbę dyżurów możliwych do wzięcia po uwzględnieniu preferencji. ` +
+                `Zmniejszono do ${count}.`));
+        } else if (maxDuties < prefDays) {
+            setDoctorData((prevState) => ({
+                ...prevState,
+                maxDuties: prefDays
+            }));
+            setMessage((`Maksymalna liczba dyżurów była mniejsza ` +
+            `od liczby preferowanych dni miesiąca. Zwiększono do ${prefDays}.`));
+        }
+    }
+
+    const acceptedDaysCount = () => {
+        return [...acceptedDays.current.values()].reduce(
+            (total, curr) => total + Number(curr), 0);
+    }
+
     const onMouseOver = (e) => {
         e.target.setAttribute('style', 
             ('background-color: var(--schedule-color-primary) !important;' +
@@ -40,7 +123,7 @@ export default function Calendar(props) {
         clearMessage();
 
         var newExceptions;
-        var newPreferredDays;
+        var newPreferredDays = [...doctorData.preferredDays];
         // If days is in exceptions, remove it.
         if (doctorData.exceptions.includes(day)) {
             newExceptions = [...doctorData.exceptions.filter(d => d !== day)];
@@ -50,7 +133,7 @@ export default function Calendar(props) {
             }));
         } 
         // If day is not in exceptions, add it 
-        // and make sure it is removed from preferred days too.
+        // and make sure it is removed from preferred days.
         else {
             newExceptions = [...doctorData.exceptions, day];
             newPreferredDays = [...doctorData.preferredDays.filter(d => d !== day)];
@@ -60,13 +143,15 @@ export default function Calendar(props) {
                 preferredDays: newPreferredDays
             }));
         }
+        updateAcceptedDays(newPreferredDays, null, newExceptions);
+        normalizeMaxDuties();
     }
 
     const setPreferredDay = (day) => {
         clearMessage();
 
         var newPreferredDays;
-        var newExceptions;
+        var newExceptions = [...doctorData.exceptions];
         // If day is already preferred, remove it.
         if (doctorData.preferredDays.includes(day)) {
             newPreferredDays = [...doctorData.preferredDays.filter(d => d !== day)];
@@ -76,13 +161,12 @@ export default function Calendar(props) {
             }));
         } 
         // If day is not preferred, prefer it
-        // and make sure it is not in exceptions.
+        // and make sure it is not in exceptions
+        // and it is not adjacent to another preferred day.
         else {
-            // Make sure preferred day is on a preferred weekday.
-            const weekday = getWeekday(year, month, day);
-            if (!doctorData.preferredWeekdays.includes(weekday)) {
-                setMessage('Nie można żądać dyżuru w niechciany dzień tygodnia. ' +
-                    'Dopuść ten dzień tygodnia i użyj zastrzeżeń.');
+           if (doctorData.preferredDays.includes(day - 1) ||
+                    doctorData.preferredDays.includes(day + 1)) {
+                setMessage('Nie można preferować dyżurów w następujące po sobie dni.');
                 return;
             }
 
@@ -94,6 +178,8 @@ export default function Calendar(props) {
                 preferredDays: newPreferredDays
             }));
         }
+        updateAcceptedDays(newPreferredDays, null, newExceptions);
+        normalizeMaxDuties(newPreferredDays.length);
     }
 
     const setPreferredWeekday = (weekday) => {
@@ -101,16 +187,6 @@ export default function Calendar(props) {
         var newPreferredWeekdays;
         // If weekday is preferred, unprefer it.
         if (doctorData.preferredWeekdays.includes(weekday)) {
-            // Make sure there are no preferred days on this weekday.
-            const preferredDayOnUnpreferredWeekday = doctorData.preferredDays.some(day => {
-                return weekday === getWeekday(year, month, day);
-            });
-            if (preferredDayOnUnpreferredWeekday) {
-                setMessage('Preferujesz dyżur w ten dzień tygodnia! ' +
-                    'Usuń preferencję albo oznacz pozostałe dni tygodnia ' +
-                    'jako zastrzeżenia.');
-                return;
-            }
             newPreferredWeekdays = [...doctorData.preferredWeekdays.filter(wd => wd !== weekday)];
         }
         // If weekdays is not preferred, prefer it.
@@ -121,6 +197,8 @@ export default function Calendar(props) {
             ...prevState,
             preferredWeekdays: newPreferredWeekdays
         }));
+        updateAcceptedDays(null, newPreferredWeekdays, null);
+        normalizeMaxDuties();
     }
 
     const handleOnClick = (e) => {
@@ -140,46 +218,46 @@ export default function Calendar(props) {
                 }
                 setPreferredWeekday(day);
         }
+        console.log(acceptedDays.current);
     }
 
     var currWeek = [];
     for (const day of days) {
-        const weekday = getWeekday(year, month, day);
 
         var classes = "";
-        if (doctorData.exceptions.includes(day)) {
+        if (doctorData.exceptions.includes(day.number)) {
             classes = "bg-danger text-light";
-        } else if (doctorData.preferredDays.includes(day)) {
+        } else if (doctorData.preferredDays.includes(day.number)) {
             classes = "bg-primary text-light";
-        } else if (!doctorData.preferredWeekdays.includes(weekday)) {
+        } else if (!doctorData.preferredWeekdays.includes(day.weekday)) {
             classes = "text-muted"
         }
 
-        if (day === 1) {
-            range(weekday).forEach((x, i) => currWeek.push(
+        if (day.number === 1) {
+            range(day.weekday).forEach((x, i) => currWeek.push(
                 <td key={`0-${i}-${doctor.name}`} ></td>)
             );
         }
 
         currWeek.push(
             <td 
-                key={`${day}-${doctor.name}`} 
+                key={`${day.number}-${doctor.name}`} 
                 className={classes}
                 onMouseOver={onMouseOver} 
                 onMouseOut={onMouseOut}
                 onClick={handleOnClick}
             >
-                {day}
+                {day.number}
             </td>
         );
 
-        if (weekday === 6) {
+        if (day.weekday === 6) {
             weeks.push([...currWeek]);
             currWeek = [];
         }
 
-        if (day === length) {
-            range(7-weekday).forEach((x, i) => currWeek.push(
+        if (day.number === length) {
+            range(7-day.weekday).forEach((x, i) => currWeek.push(
                 <td key={`${length}-${i}-${doctor.name}`} ></td>
             ));
             weeks.push([...currWeek]);

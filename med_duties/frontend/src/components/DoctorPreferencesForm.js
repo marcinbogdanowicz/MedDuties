@@ -11,6 +11,7 @@ export default function DoctorPreferencesForm(props) {
     const updateDoctor = props.updateDoctor;
     const removeDoctor = props.removeDoctor;
     const daysInMonth = new Date(year, month, 0).getDate();
+    const maximumDuties = Math.floor(new Date(year, month, 0).getDate() / 2);
 
     const [messages, setMessages] = useState({});
 
@@ -55,6 +56,11 @@ export default function DoctorPreferencesForm(props) {
             value = positions;
         } else if (name === 'locked') {
             value = event.target.checked;
+        } else if (name === 'maxDuties') {
+            value = parseInt(value);
+            if (value && (isNaN(value) || value > maximumDuties)) {
+                value = doctorData.maxDuties;
+            }
         }
 
         setDoctorData((prevState) => ({
@@ -72,8 +78,8 @@ export default function DoctorPreferencesForm(props) {
         if (isNaN(doctorData.maxDuties)) {
             newMessages.maxDuties = "Proszę podać liczbę.";
         } 
-        else if (doctorData.maxDuties > 16 || doctorData.maxDuties < 1) {
-            newMessages.maxDuties = "Proszę podać liczbę w przedziale 1 - 16";
+        else if (doctorData.maxDuties > maximumDuties || doctorData.maxDuties < 1) {
+            newMessages.maxDuties = `Proszę podać liczbę w przedziale 1 - ${maximumDuties}`;
         }
 
         if (doctorData.exceptions.some(exc => (exc < 1 || exc > daysInMonth))) {
@@ -145,8 +151,8 @@ export default function DoctorPreferencesForm(props) {
                     <Form.Label>
                         Maksymalna liczba dyżurów 
                         <WithTooltip 
-                            message={"Lekarz nie dostanie więcej dyżurów, " +
-                                "ale może dostać mniej. Wybierz od 1 do 16."}>
+                            message={`Lekarz nie dostanie więcej dyżurów, ` +
+                                `ale może dostać mniej. Wybierz od 1 do ${maximumDuties}.`}>
                         </WithTooltip>
                     </Form.Label>
                     <Form.Control type="number" name="maxDuties" value={doctorData.maxDuties} onChange={inputHandler} placeholder="" />
@@ -166,6 +172,7 @@ export default function DoctorPreferencesForm(props) {
                         month={month} 
                         doctor={doctor}
                         doctorData={{
+                            maxDuties: doctorData.maxDuties,
                             exceptions: doctorData.exceptions, 
                             preferredDays: doctorData.preferredDays, 
                             preferredWeekdays: doctorData.preferredWeekdays

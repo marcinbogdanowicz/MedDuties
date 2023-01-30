@@ -78,13 +78,9 @@ class MonthlyDuties {
         this._assignAndPostCheck = this._assignAndPostCheck.bind(this);
         this._isThereEnoughDoctors = this._isThereEnoughDoctors.bind(this);
         this._checkPreferredDays = this._checkPreferredDays.bind(this);
-        this._checkMaxDuties = this._checkMaxDuties.bind(this);
         this._checkByDay = this._checkByDay.bind(this);
         this._checkDayPair = this._checkDayPair.bind(this);
         this._checkDay = this._checkDay.bind(this);
-        this._getWeekdaysPreferences = this._getWeekdaysPreferences.bind(this);
-        this._getCombinations = this._getCombinations.bind(this);
-        this._getWastedDuties = this._getWastedDuties.bind(this);
         this._assignPreferredDuties = this._assignPreferredDuties.bind(this);
         this._assignDuties = this._assignDuties.bind(this);
         this._checkForMissingDuties = this._checkForMissingDuties.bind(this);
@@ -263,7 +259,8 @@ class MonthlyDuties {
                             preferences[date][position].filter(d => d !== doctor));
                         continue;
                     }
-                    if (!prefWeekdays.includes(day.weekday)) {
+                    if (!prefWeekdays.includes(day.weekday) &&
+                            !prefDays.includes(day.number)) {
                         preferences[date][position] = (
                             preferences[date][position].filter(d => d !== doctor));
                         continue;
@@ -315,12 +312,6 @@ class MonthlyDuties {
             // of subsequent days has enough doctors for all duties to be set.
             const allDaysAreOk = this._checkByDay();
             results.push(allDaysAreOk);
-
-            // Reduce declared max number of accepted duties
-            // to real (i.e. corresponding number of duties on accepted weekdays)
-            // and then check if doctors accept enough duties to fill all days.
-            const maxDutiesOk = this._checkMaxDuties();
-            results.push(maxDutiesOk);
         }
 
         if (!results.every(outcome => outcome)) {
@@ -368,7 +359,7 @@ class MonthlyDuties {
         for (const doctor of this.doctors) {
             const exceptions = doctor.getExceptions();
             const preferredDays = doctor.getPreferredDays();
-            const preferredWeekdays = doctor.getPreferredWeekdays();
+            //const preferredWeekdays = doctor.getPreferredWeekdays();
             const doctorsPreferredPositions = doctor.getPreferredPositions();
             const maxNumberOfDuties = doctor.getMaxNumberOfDuties();
 
@@ -377,12 +368,14 @@ class MonthlyDuties {
                     errors.add(`${doctor.name} jednocześnie wyklucza i ` +
                         `preferuje dyżur ${day}/${this.month}/${this.year}.`);
                 }
+                /** 
                 const weekday = this.getDay(day).weekday;
                 if (!preferredWeekdays.includes(weekday)) {
                     errors.add(`${doctor.name} preferuje dyżur w dzień ${day}/` +
                         `${this.month}/${this.year} - ${WEEKDAY_NAMES[weekday]}` +
                         ` - jednocześnie wykluczając dyżury w ten dzień tygodnia.`);
                 }
+                */
             }
 
             // Check if doctor has more preferences then his duty number limit.
@@ -460,7 +453,7 @@ class MonthlyDuties {
     }
 
     _checkDayPair(date) {
-        const preferences = this.preferences
+        const preferences = this.preferences;
 
         // Create errors object.
         const errors = new Map();
@@ -535,11 +528,11 @@ class MonthlyDuties {
         }
         if (missingPos.length) {
             errors.push(`${date}/${this.month}/${this.year} ` +
-                `na ${missingPos.length > 1 ? 'każdej z pozycji' : 'pozycji'} ` +
+                `na ${missingPos.length > 1 ? 'każdej z pozycji:' : 'pozycji'} ` +
                 `${missingPos.join(', ')} brakuje lekarza, który mógłby objąć ` +
                 `dyżur.`);
         }
-        
+
         // Check all positions.
         const missingCount = (
             this.dutyPositions.length - preferences[date]['all'].length);
@@ -552,175 +545,6 @@ class MonthlyDuties {
         }
 
         return errors;
-    }
-
-    _checkMaxDuties() {
-        // Checks if combination of max duties and preferred weekdays
-        // allow for all duties to be set.
-        const dutiesInMonth = this.days.length * this.dutyPositions.length;
-        const totalMaxDuties = this.doctors.map(
-                doctor => doctor.getMaxNumberOfDuties()
-            ).reduce(
-                (count, number) => count + number, 0
-            );
-        if (totalMaxDuties < dutiesInMonth) {
-            this._log(`Maksymalna liczba dyżurów akceptowana ` +
-                `łącznie przez wszystkich lekarzy jest o ` +
-                `${dutiesInMonth - totalMaxDuties} niższa ` +
-                `niż liczba miejsc dyżurowych do obsadzenia ` +
-                `(${dutiesInMonth} - iloczyn dni i ` +
-                `pozycji).`);
-            return false;
-        }
-
-        const wastedDuties = {};
-        // Get unique combinations of all lengths of preferred duty positions.
-        const positionsCombinations = this._getCombinations(this.dutyPositions);
-
-        for (const combination of positionsCombinations) {
-            // Get an object with groups as keys
-            // and lists of doctors who prefer such groups as values.
-            const preferredWeekdaysGroups = this._getWeekdaysPreferences(combination);
-            // Create a dict of dicts, where keys are position combinations
-            // and weekdays groups (in nested dict) and values are dicts:
-            // { missing: 
-            //      number of wasted duties for each weekdays group 
-            //      for exactly this combination
-            //   doctors:
-            //      doctors who prefer this group and its subgroups
-            // }
-            wastedDuties[combination] = this._getWastedDuties(
-                combination, preferredWeekdaysGroups);
-        }
-
-        // Deduct wasted duties from declared max duties
-        // - they can't be set.
-        const totalWastedDuties = Object.values(wastedDuties).map(item =>
-            Object.values(item)).flat().reduce((value, item) => 
-            value + item.missing, 0);
-        const actualMaxDuties = totalMaxDuties - totalWastedDuties;
-
-        // Raise error if there are not enough 'actual' duties
-        if (actualMaxDuties < dutiesInMonth) {
-            const doctorsToCheck = [...new Set(Object.values(wastedDuties).map(item =>
-                Object.values(item)).flat().map(item => item.doctors).flat())];
-            this._log('Zbyt mała liczba akceptowanych dyżurów. ' +
-                'Zbyt wielu lekarzy deklaruje przyjęcie dyżurów ' +
-                'w niektóre dni tygodnia, podczas gdy pozostałe dni ' +
-                'pozostają nieobsadzone. Dodaj akceptowane dni tygodnia lekarzom: ' +
-                `${doctorsToCheck.map(d => d.name).join(', ')} albo zwiększ `+
-                `liczbę dyżurów akceptowanych przez pozostałych lekarzy. ` +
-                `Szczegóły:`);
-            for (const [positions, wasted] of Object.entries(wastedDuties)) {
-                if (Object.keys(wasted).length) {
-                    for (const [weekdays, detail] of Object.entries(wasted)) {
-                        this._log(`- ${detail.doctors.map(d => d.name).join(', ')} ` +
-                            `na pozycjach ${positions} akceptują jedynie dni: ` +
-                            `${weekdays.toString().split('').map(w => WEEKDAY_NAMES[w]).join(', ')}. ` +
-                            `Razem deklarują o ${detail.missing} dyżurów więcej niż ` +
-                            `można wziąć w te dni na tych pozycjach.`);
-                    }
-                }
-            }
-            return false;
-        }
-        return true;
-    }
-
-    _getCombinations(array) {
-        // Returns array of combinations of all lengths.
-        let combs = [];
-        for (const i of range(1, array.length+1)) {
-            combs = combs.concat([...new Combination(array, i)]);
-        }
-        return combs;
-    }
-
-    _getWeekdaysPreferences(positions) {
-        // Returns a dict of all doctors who prefer
-        // exactly this position combination, for each weekdays group.
-        const preferredWeekdaysGroups = new DefaultDict(Array);
-        for (const doctor of this.doctors) {
-            if (doctor.getPreferredPositions().every(pos => positions.includes(pos))) {
-                const preferredWeekdays = doctor.getPreferredWeekdays();
-                // Ommiting preference for all 7 weekdays is necessary;
-                // otherwise it would be necessary for total max duties
-                // to be less or equal to total number of accepted duties.
-                if (preferredWeekdays.length === 7) {
-                    continue;
-                }
-                preferredWeekdaysGroups[preferredWeekdays.join('')].push(doctor);
-            }
-        }
-        return preferredWeekdaysGroups;
-    }
-
-    _getWastedDuties(positions, preferredWeekdaysGroups) {
-        /* Finds how many of declared max duties will not be set
-        (for each weekdays group for given positions combination).*/
-
-        const wastedDuties = {};
-
-        // Find maximum duties accepted by all doctors
-        // who prefer each weekdays group and keep doctors in a set.
-        const weekdaysGroups = Object.keys(preferredWeekdaysGroups).map(key => {
-            return key.split('');
-        });
-
-        for (const weekdaysGroup of weekdaysGroups) {
-            const doctors = preferredWeekdaysGroups[weekdaysGroup.join('')];
-            let sumOfMaxAcceptedDuties = doctors.reduce(
-                (prevValue, doctor) => {
-                    return prevValue + doctor.getMaxNumberOfDuties();
-            }, 0);
-            const doctorsWithPreferenceForGroupOrSubgroup = new Set();
-            preferredWeekdaysGroups[weekdaysGroup.join('')].forEach(doctor => {
-                doctorsWithPreferenceForGroupOrSubgroup.add(doctor);
-            });
-
-            // Find all subgroups of current group
-            // and update max duties number and doctors set.
-            for (const anotherWeekdaysGroup of weekdaysGroups) {
-                if (areEqual(weekdaysGroup, anotherWeekdaysGroup)) {
-                    continue;
-                }
-                const groupIsSubgroup = anotherWeekdaysGroup.every(
-                    weekday => weekdaysGroup.includes(weekday));
-                if (groupIsSubgroup) {
-                    const subgroupDoctors = (
-                        preferredWeekdaysGroups[anotherWeekdaysGroup.join('')]);
-                    sumOfMaxAcceptedDuties += subgroupDoctors.reduce(
-                        (prevValue, doctor) => {
-                            return prevValue + doctor.getMaxNumberOfDuties();
-                    }, 0);
-                    preferredWeekdaysGroups[anotherWeekdaysGroup.join('')].forEach(
-                        doctor => doctorsWithPreferenceForGroupOrSubgroup.add(doctor)
-                    );
-                }
-            }
-            // Find how many duties there are to take 
-            // in current weekdays group.
-            const modifier = (
-                doctorsWithPreferenceForGroupOrSubgroup.size >= positions.length ? 
-                positions.length : 
-                doctorsWithPreferenceForGroupOrSubgroup.size
-            );
-            const sumOfDutiesOnWeekdaysGroup = (
-                getNumberOfWeekdaysInMonth(this.year, this.month, weekdaysGroup)
-                * modifier
-            );
-
-            if (sumOfMaxAcceptedDuties > sumOfDutiesOnWeekdaysGroup) {
-                const missingDuties = (
-                    sumOfMaxAcceptedDuties
-                    - sumOfDutiesOnWeekdaysGroup
-                );
-                wastedDuties[weekdaysGroup.join('')] = { missing: missingDuties,
-                    doctors: [...doctorsWithPreferenceForGroupOrSubgroup] };
-            }
-        }
-
-        return wastedDuties;
     }
 
     setDuties() {
@@ -813,13 +637,11 @@ class MonthlyDuties {
         frontier.addToFront(initNode);
 
         let best = null;
-
         let steps = 0;
 
         // Keep looping until all duties are filled.
         while (true) {
-            console.log(`Steps: ${steps}. Frontier: ${frontier.frontier.length}`);     // TESTING
-            console.log(this.preferences);
+            console.log(`Steps: ${steps}. Frontier: ${frontier.frontier.length}. Depth: ${depth}`);     // TESTING
 
             // If frontier is empty, there is no solution.
             if (frontier.empty()) {
@@ -844,18 +666,33 @@ class MonthlyDuties {
             }
 
             // Expand current node and add new options to frontier.
-            this._options(state, depth).forEach(([action, state], index) => { // Check after forEach
+            const options = this._options(state, depth);
+
+            // Streak search
+            options.reverse();
+            options.forEach(([action, state], index) => {
+                if (action !== null && state !== null) {
+                    const child = new Node(state, node, action);
+                    if (index === 0) { frontier.addToFront(child); }
+                    else { frontier.addToBack(child); }
+                }
+            });
+
+            /** 
+            // Normal search
+            options.forEach(([action, state], index) => {
                 if (action !== null && state !== null) {
                     const child = new Node(state, node, action);
                     frontier.addToFront(child);
                 }
             });
+            */
 
             steps++;
             if (steps > (2 * this.days.length) && (depth * this.dutyPositions.length) < this.doctors.length) {
                 this._assignDuties(depth+1);
                 break;
-            } else if (steps > 1000) {
+            } else if (steps > 5000) {
                 // Assign best combination achieved and set it.
                 this._assign(best.state);
                 break;
@@ -945,10 +782,6 @@ class MonthlyDuties {
             return [[null, null]];
         }
 
-        const a = Date.now();
-        console.log(`Depth: ${depth}`);
-        console.log("0 ms (0 ms) - START - result: 0 el");
-
         // Get each doctor's strain for current day.
         const avgDuties = (
             this.doctors.length 
@@ -974,8 +807,6 @@ class MonthlyDuties {
             }
             strains.set(doctor, doctorStrains);
         }
-        const b = Date.now();
-        console.log(`${b-a} ms (${b-a} ms) - got strains - result: 0 el`);
 
         // Prepare a list of lists of doctors per each position
         // to be used for getting combinations.
@@ -1009,19 +840,13 @@ class MonthlyDuties {
                 strains.set(doctor, docStrains);
             }
         }
-        const c = Date.now();
-        console.log(`${c-b} ms (${c-a} ms) - got list of lists for combinations - result: 0 el`);
-
+ 
         // Get unique doctor's combinations
         // (they respect preferred positions).
         let result = (
             [...new CartesianProduct(...todaysPreferences)]
             .filter(elem => new Set(elem).size === elem.length)
         );
-
-        const d = Date.now();
-        console.log(`${d-c} ms (${d-a} ms) - got combinations - result: ${result.length} el`);
-
 
         // Add action to each combination.
         result = result.map(option => {
@@ -1033,9 +858,6 @@ class MonthlyDuties {
             const action = {day: day, strain: strain};
             return [action, option];
         });
-
-        const e = Date.now();
-        console.log(`${e-d} ms (${e-a} ms) - added actions to combinations - result: ${result.length} el`);
 
         // Make sure each combination allows for next day to be set.
         if (date < this.days.length && !preferences[date + 1].isSet) {
@@ -1060,9 +882,6 @@ class MonthlyDuties {
             });
         }
 
-        const f = Date.now();
-        console.log(`${f-e} ms (${f-a} ms) - erased combinations that would interfere with adjacent days - result: ${result.length} el`);
-
         // Sort combinations by strain, /*max duties and 
         // - on weekends - by number of weekend duties 
         // after the option is chosen, preferring the latter.*/
@@ -1071,38 +890,6 @@ class MonthlyDuties {
         shuffle(result);
         result.sort(([actionA, stateA], [actionB, stateB]) =>
             actionB.strain - actionA.strain);
-        const g = Date.now();
-        console.log(`${g-f} ms (${g-a} ms) - sorted by strains - FINISHED - result: ${result.length} el`);
-        /*result.sort(([actionA, stateA], [actionB, stateB]) => {
-            const dutiesA = stateA.reduce((prevVal, currVal) => prevVal + currVal.getNumberOfDutiesLeft(duties), 0);
-            const dutiesB = stateB.reduce((prevVal, currVal) => prevVal + currVal.getNumberOfDutiesLeft(duties), 0);
-            return dutiesB - dutiesA;
-        });
-        const c = Date.now();
-        console.log(`By duties left (took ${c-b} ms):`);
-        console.log(result.map(([action, state]) => `Strain: ${action.strain}, state: ${state.map(d => d.name)}`));
-        result.sort(([actionA, stateA], [actionB, stateB]) => {
-            // Ignoring differences above 12 max duties helps prevent imbalance.
-            const treshold = 12;
-            let maxDutiesA = stateA.reduce((prevVal, currVal) => prevVal + currVal.getMaxNumberOfDuties(), 0);
-            maxDutiesA > treshold && (maxDutiesA = treshold);
-            let maxDutiesB = stateB.reduce((prevVal, currVal) => prevVal + currVal.getMaxNumberOfDuties(), 0);
-            maxDutiesB > treshold && (maxDutiesB = treshold);
-            return maxDutiesB - maxDutiesA;
-        });
-        const d = Date.now();
-        console.log(`By max duties (fin) (took ${d-b} ms)`);
-        console.log(result.map(([action, state]) => `Strain: ${action.strain}, state: ${state.map(d => `${d.name}(${d.getMaxNumberOfDuties()})`)}`));
-        console.log(`All took ${d-a} ms`);*/
-        /*if ([4,5,6].includes(day.weekday)) {
-            result.sort(([actionA, stateA], [actionB, stateB]) => {
-                const weekendsA = stateA.reduce((prevVal, currVal) => prevVal + currVal.getWeekendsOnDuty(stateA).length, 0);
-                const weekendsB = stateB.addedDoctors.reduce((prevVal, currVal) => prevVal + currVal.getWeekendsOnDuty(stateB).length, 0);
-                return weekendsB - weekendsA;
-            });
-        }*/
-            /* This - or most of it - should be handled
-            by doctor's evaluation. */
 
         return result;
     }
@@ -1255,6 +1042,7 @@ class MonthlyDuties {
 
             const exceptions = doctor.getExceptions();
             const preferredWeekdays = doctor.getPreferredWeekdays();
+            const preferredDays = doctor.getPreferredDays();
             const preferredPositions = doctor.getPreferredPositions();
 
             dates.forEach((day, i, dates) => {
@@ -1262,7 +1050,9 @@ class MonthlyDuties {
                 const dutiesOnConsecutiveDays = dates.includes(day + 1);
                 const iHaveDutyOnExcludedDay = exceptions.includes(day);
                 const iHaveDutyOnExcludedWeekday = (
-                    !preferredWeekdays.includes(duties[i].getDay().weekday));
+                    !preferredWeekdays.includes(duties[i].getDay().weekday) &&
+                    !preferredDays.includes(day)
+                );
                 const iHaveDutyOnExcludedPosition = (
                     !preferredPositions.includes(duties[i].getPosition()));
                 const dutyIsUserSet = duties[i].isUserSet();

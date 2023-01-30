@@ -10,7 +10,7 @@ export default function Log(props) {
     const content = (
         <div className="log-content border">
             {
-                log ? 
+                log.items ? 
                 <ul>{log.items}</ul> :
                 <ul><li>Tu pojawią się informacje o błędach lub zmianach
                 w ustawieniach lekarzy wprowdzonych przez algorytm.</li></ul>

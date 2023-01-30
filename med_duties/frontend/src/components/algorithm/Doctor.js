@@ -1,8 +1,8 @@
-import { range, getNumberOfWeekdaysInMonth, getDiff } from './utils';
+import { range, getNumberOfWeekdaysInMonth, getWeekday } from './utils';
 import EvaluationChart from './EvaluationChart';
 
 
-var MAX_NUMBER_OF_DUTIES_PER_MONTH = 16;
+var MAX_NUMBER_OF_DUTIES_PER_MONTH = (month, year) => Math.floor(new Date(year, month, 0).getDate() / 2);
 
 var MODIFIER_DUTY_IMPOSSIBLE = 10000;
 var MODIFIER_TWO_DAYS_APART = 30;
@@ -67,7 +67,7 @@ class Doctor {
         this.unit = unit;
         this.duties = []; 
         this.strain = 0;
-        this.maxNumberOfDuties = MAX_NUMBER_OF_DUTIES_PER_MONTH;
+        this.maxNumberOfDuties = MAX_NUMBER_OF_DUTIES_PER_MONTH(month, year);
         this.exceptions = [];
         this.preferredDays = [];
         this.preferredWeekdays = range(7);
@@ -220,9 +220,6 @@ class Doctor {
                     } 
                     return false;
             });
-            const iHaveDutiesOnTwoOtherWeekends = (
-                (weekendsIHaveDutiesOn.length > 1) 
-                && !(day.week in weekendsIHaveDutiesOn));
             const iAmNotOnDutyTwoDaysAgo = !(Object.values(whoIsOnDuty(today - 2)).some(entry => {
                 if (entry) {
                     return entry.pk === this.pk;
@@ -286,22 +283,13 @@ class Doctor {
             }
 
             if (itIsWeekend && iDontHaveDutyOnThisWeekend(day)) {
-                evaluationChart.modifyPoints(today, (weekendsIHaveDutiesOn.length + 1) * MODIFIER_NEW_WEEKEND);
+                const modifier = (
+                    (weekendsIHaveDutiesOn.length + 1) * MODIFIER_NEW_WEEKEND);
+                evaluationChart.modifyPoints(today, modifier);
             }
 
             // Apply modifier for duties left.
             evaluationChart.modifyPoints(today, dutiesLeftModifier);
-
-            /*
-            if (itIsSaturday && iHaveDutiesOnOneOtherWeekend) {
-                // Aim for two weekends with three duties: fri+sun and sat.
-                evaluationChart.modifyPoints(today, MODIFIER_SATURDAY_IF_ONE_WEEKEND);
-            }
-
-            if (!itIsWeekend && iDontHaveDutiesOnTwoWeekendsYet) {
-                // Support the team, take at least two weekends!
-                evaluationChart.modifyPoints(today, MODIFIER_LESS_THAN_TWO_WEEKENDS);
-            }*/
         }
 
         return evaluationChart;
@@ -541,6 +529,7 @@ class Doctor {
             this.#preferredDaysInit = daysList;
         }
         this.preferredDays = daysList;
+        this.#updateMaxNumberOfDuties(saveInit);
     }
 
     getPreferredDays() {
@@ -571,11 +560,24 @@ class Doctor {
             return;
         }
 
-        const numberOfPreferredWeekdaysInMonth = getNumberOfWeekdaysInMonth(
+        const preferredWeekdaysInMonth = getNumberOfWeekdaysInMonth(
             this.#year, this.#month, this.preferredWeekdays);
 
-        if (this.maxNumberOfDuties > numberOfPreferredWeekdaysInMonth) {
-            this.setMaxNumberOfDuties(numberOfPreferredWeekdaysInMonth, saveInit);
+        const preferredDaysOnUnpreferredWeekdays = (
+            this.preferredDays.reduce((sum, prefDay) => {
+                const weekday = getWeekday(this.#year, this.#month, prefDay);
+                if (!this.preferredWeekdays.includes(weekday)) {
+                    return sum + 1;
+                }
+            }, 0)
+        );
+
+        const acceptedDaysInMonth = preferredWeekdaysInMonth + preferredDaysOnUnpreferredWeekdays
+
+        if (this.maxNumberOfDuties > acceptedDaysInMonth) {
+            this.setMaxNumberOfDuties(acceptedDaysInMonth, saveInit);
+        } else if (this.maxNumberOfDuties < this.preferredDays.length || !this.preferredWeekdays.length) {
+            this.setMaxNumberOfDuties(this.preferredDays.length, saveInit);
         }
     }
 

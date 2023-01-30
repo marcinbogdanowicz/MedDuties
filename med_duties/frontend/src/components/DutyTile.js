@@ -59,7 +59,7 @@ export default function DutyTile(props) {
 
     const options = [];
     if (doctors) {
-        doctors.forEach((currentDoctor, i) => {
+        doctors.filter(d => d.getNumberOfDutiesLeft() > 0).forEach((currentDoctor, i) => {
             var unsafe = false;
             if (currentDoctor !== doctor) {
                 const dutyDates = currentDoctor.getDuties().map(d => d.getDay().number);

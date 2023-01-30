@@ -4,6 +4,7 @@ import Accordion from 'react-bootstrap/Accordion';
 import Container from 'react-bootstrap/Container';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
+import ScheduleSettings from './ScheduleSettings';
 import ScheduleMenuButton from './ScheduleMenuButton';
 import ConflictModal from './ConflictModal';
 import ColumnLayout from './ColumnLayout';
@@ -21,6 +22,7 @@ import MonthlyDuties from './algorithm/MonthlyDuties';
 import Unit from './algorithm/Unit';
 import axiosInstance from '../axiosApi';
 import * as xlsx from 'xlsx';
+import { shuffle } from './algorithm/utils';
 
 
 var months = {
@@ -53,15 +55,27 @@ export default function DutiesSetter() {
         inactiveDoctors: [],
         monthlyDuties: {}
     });
-    const [messages, setMessages] = useState({});
+    const [alertData, setAlertData] = useState({
+        show: false,
+        variant: '',
+        header: '',
+        content: '',
+
+    });
+    const [logData, setLogData] = useState({
+        hide: true,
+        items: null,
+        heading: 'Log'
+    });
     const [highlight, setHighlight] = useState('');
-    const [hideLog, setHideLog] = useState(true);
-    const [hideStatistics, setHideStatistics] = useState(true);
+    const [statsData, setStatsData] = useState({
+        hide: true,
+        data: null
+    });
     const [spinnerData, setSpinnerData] = useState({
         show: false,
         content: []
     });
-    const [statistics, setStatistics] = useState(null);
     const [modalData, setModalData] = useState({
         show: false,
         body: '',
@@ -71,12 +85,18 @@ export default function DutiesSetter() {
         btnBVal: ''
     });
 
+    // Init max number of duties.
+    const maximumDuties = useRef(15);
+
     // Get data.
     const [unitData, doctorsData, scheduleData, prevDutiesData, nextDutiesData] = useLoaderData();
 
     // Get loader data, process it and save in state.
     useEffect(() => {
         const [month, year] = scheduleData.monthandyear.split('/');
+
+        // Update max number of duties.
+        maximumDuties.current = Math.floor(new Date(year, month, 0).getDate() / 2);
 
         // Create Unit instance.
         const unit = new Unit(unitData.pk, unitData.name, unitData.duty_positions);
@@ -237,36 +257,25 @@ export default function DutiesSetter() {
         // Receive result.
         let result = null;
         myWorker.onmessage = (event) => {
-            console.log('Received message from Worker!');
-            console.log(event.data);
             result = event.data;
             myWorker.terminate();
 
             // Transform raw data into list items.
-            const logItems = transformLogData(result.logData);
+            const logItems = result.logData;
 
             // Save response and log in appropriate state.
             if (result.success) {
                 // Create log, if there are any items.
-                const log = {
-                    items: logItems,
-                    heading: 'Log'
-                };
+                log(logItems, 'Log', false);
                 if (result.allSet) {
                     const info = <p>Dyżury zostały ułożone.<br />
                         Pamiętaj, żeby <strong>zapisać</strong> je przed wyjściem.</p>
-                    setMessages((prevData) => ({
-                        ...prevData,
-                        log: log,
-                        info: info
-                    }));
+                    showAlert(info);
                 } else {
                     const settingError = 'Nie udało się ułożyć wszystkich dyżurów.';
-                    setMessages((prevData) => ({
-                        ...prevData,
-                        log: log,
-                        settingError: settingError
-                    }));
+                    const header = 'Nie wyszło...';
+                    const variant = 'warning';
+                    showAlert(settingError, header, variant);
                 }
 
                 // Clear non-user-set duties.
@@ -300,18 +309,14 @@ export default function DutiesSetter() {
                 hideSpinner();
 
             } else {
-                const log = {
-                    items: logItems, 
-                    heading: 'Ustawienia uniemożliwiające ułożenie dyżurów'
-                };
+                hideSpinner();
+                const heading = 'Ustawienia uniemożliwiające ułożenie dyżurów';
+                log(logItems, heading);
                 const settingError = ('Dyżury nie zostały ułożone z powodu ustawień lekarzy. ' +
                     'Sprawdź log, aby zobaczyć szczegółowe informacje.');
-                hideSpinner();
-                setMessages((prevData) => ({
-                    ...prevData,
-                    log: log,
-                    settingError: settingError
-                }));
+                const header = 'Nie wyszło...';
+                const variant = 'warning';
+                showAlert(settingError, header, variant);
             }
         }
     }
@@ -386,14 +391,6 @@ export default function DutiesSetter() {
         return data;
     }
 
-    const transformLogData = (logData) => {
-        const logItems = [];
-        logData.forEach((item, i) => {
-            logItems.push(<li key={i+1}>{item}</li>);
-        });
-        return logItems;
-    }
-
     const setDoctorOnDuty = (duty, doctor) => {
         var userSet = false;
         if (doctor) {
@@ -445,37 +442,185 @@ export default function DutiesSetter() {
         updateStatistics();
     }
 
-    const toggleLog = () => {
-        setHideStatistics(true);
-        setHideLog(!hideLog);        
-    }
-
-    const toggleStatistics = () => {
-        if (hideStatistics) {
-            updateStatistics();
-        }
-        setHideLog(true);
-        setHideStatistics(!hideStatistics);
-    }
-
     const updateStatistics = () => {
-        const stats = appData.monthlyDuties.getStatistics();
-        setStatistics(stats);
+        const data = appData.monthlyDuties.getStatistics();
+        setStatsData((prevState) => ({
+            ...prevState,
+            data: data
+        }));
     }
 
-    const updateDoctor = async (data) => {
+    const normalizeMaxDuties = () => {
+        /**
+         * Modifies doctors' max number of duties setting
+         * so that it's sum is equal to number of duties
+         * in month.
+         */
+
+        const doctors = [...appData.doctors];
+        const initMaxDuties = getMaxDuties(doctors);
+        const avgDuties = totalDuties() / doctors.length;
+        const avgMaxDuties = () => totalMaxDuties() / doctors.length;
+        const factor = () => avgDuties / avgMaxDuties();
+        const diff = () => totalDuties() - totalMaxDuties();
+
+        // Check if goal is achievable.
+        if (!appData.doctors.length) {
+            return [false, 'Nie dodano lekarzy!'];
+        } else if ((appData.doctors.length * maximumDuties) < totalDuties()) {
+            return [false, 'Zbyt mało lekarzy.']
+        }
+
+        console.log('Init:');
+        console.log(`Diff: ${diff()}`);
+        console.log(doctors.map(d => `${d.name}: ${d.getMaxNumberOfDuties()}`));
+
+        // Check if goal is already achieved.
+        if (diff() === 0) {
+            return [false, "Lekarze deklarują właściwą liczbę dyżurów."];
+        }
+
+        const drift = Math.ceil(totalMaxDuties() / 30) + 2;
+        let i = 0;
+        while (Math.abs(diff()) > drift) {
+            normalize(doctors, factor());
+            if (i > 5) { break; }
+            i++;
+
+            console.log('Normalized:');
+            console.log(`Diff: ${diff()}`);
+            console.log(doctors.map(d => `${d.name}: ${d.getMaxNumberOfDuties()}`));
+        }
+
+        while (diff() !== 0) {
+            shuffle(doctors);
+            const candidate = getDoctorWithExtremeMax(doctors, diff());
+            const modifier = (diff() / Math.abs(diff()));
+            candidate.setMaxNumberOfDuties(candidate.getMaxNumberOfDuties() + modifier);
+
+            console.log('Tuned:');
+            console.log(`Diff: ${diff()}`);
+            console.log(`Changed doctor: ${candidate.name}`);
+            console.log(doctors.map(d => `${d.name}: ${d.getMaxNumberOfDuties()}`));
+        }
+
+        const newMaxDuties = getMaxDuties(doctors);
+
+        logChanges(initMaxDuties, newMaxDuties);
+        refreshState();
+        saveNewMaxDutiesToDB(newMaxDuties);
+        return [true, null];
+    }
+
+    const getMaxDuties = (doctors) => {
+        const result = new Map();
+        for (const doctor of doctors) {
+            result.set(doctor, doctor.getMaxNumberOfDuties());
+        }
+        return result;
+    }
+
+    const totalMaxDuties = (doctors=appData.doctors) => doctors.reduce(
+        (total, doctor) => total + doctor.getMaxNumberOfDuties(), 0);
+
+    const totalDuties = () => {
+        if (Object.values(appData.monthlyDuties).length) {
+            return appData.monthlyDuties.getDays().length * appData.monthlyDuties.dutyPositions.length;
+        }
+    }
+
+    const normalize = (doctors, factor) => {
+        doctors.forEach(doctor => {
+            let newDuties = Math.round(doctor.getMaxNumberOfDuties() * factor);
+            newDuties > maximumDuties && (newDuties = maximumDuties);
+            doctor.setMaxNumberOfDuties(newDuties);
+        });
+    }
+
+    const getDoctorWithExtremeMax = (doctors, diff) => {
+        return doctors.reduce((best, doctor) => {
+            const doctorMax = doctor.getMaxNumberOfDuties();
+            const bestMax = best.getMaxNumberOfDuties();
+            if ((doctorMax * diff) < (bestMax * diff)) {
+                return doctor;
+            } else {
+                return best;
+            }
+        }, doctors[0]);
+    }
+
+    const logChanges = (initData, newData) => {
+        const logItems = [
+            <React.Fragment>
+                ZMIENIONO maksymalną liczbę dyżurów poszczególnych 
+                lekarzy, aby umożliwić przydzielenie im dokładnie podanej
+                liczby dyżurów. <br/> UWAGA! Sprawdź, czy zmiany odpowiadają
+                Twoim potrzebom. Możesz chcieć wprowadzić korekty,
+                albo cofnąć zmiany i ręcznie dostosować ustawienia.<br/>
+                <span 
+                    className="link text-primary" 
+                    onClick={() => undoChanges(initData)}
+                >
+                    [[ COFNIJ ZMIANY ]]
+                </span>
+            </React.Fragment>
+        ];
+        for (const doctor of appData.doctors) {
+            const initMax = initData.get(doctor);
+            const newMax = newData.get(doctor);
+            if (initMax !== newMax) {
+                const change = initMax < newMax ? 'zwiększono' : 'zmniejszono';
+                logItems.push(`${doctor.name}: ${change} maksymalną ` +
+                    `liczbę dyżurów o ${Math.abs(initMax - newMax)} - ` +
+                    `z ${initMax} do ${newMax}.`);
+            }
+        }
+        log(logItems);
+    }
+
+    const undoChanges = (initData) => {
+        for (const doctor of appData.doctors) {
+            doctor.setMaxNumberOfDuties(initData.get(doctor));
+        }
+        log(['Cofnięto']);
+        refreshState();
+        saveNewMaxDutiesToDB(initData);
+    }
+
+    const saveNewMaxDutiesToDB = (newData) => {
+        for (const doctor of appData.doctors) {
+            const data = {
+                pk: doctor.getPk(),
+                maxDuties: newData.get(doctor)
+            }
+            updateDoctor(data);
+        }
+    }
+
+    const updateDoctor = async (d) => {
+        const data = {...d};
         // Get doctor
         const doctor = appData.doctors.find(doc => doc.pk === data.pk);
 
-        // Update instance.
-        doctor.setMaxNumberOfDuties(data.maxDuties, true);
-        doctor.setExceptions(data.exceptions, true);
-        doctor.setPreferredDays(data.preferredDays, true);
-        doctor.setPreferredPositions(data.preferredPositions, true);
-        doctor.setPreferredWeekdays(data.preferredWeekdays, true);
-        if (data.locked) {
-            doctor.lockPreferences();
-        }
+        // Update instance and sync data.
+        'maxDuties' in data ? 
+            doctor.setMaxNumberOfDuties(data.maxDuties, true) :
+            data.maxDuties = doctor.getMaxNumberOfDuties();
+        'exceptions' in data ?
+            doctor.setExceptions(data.exceptions, true) :
+            data.exceptions = doctor.getExceptions();
+        'preferredDays' in data ?
+            doctor.setPreferredDays(data.preferredDays, true) :
+            data.preferredDays = doctor.getPreferredDays();
+        'preferredPositions' in data ?
+            doctor.setPreferredPositions(data.preferredPositions, true) :
+            data.preferredPositions = doctor.getPreferredPositions();
+        'preferredWeekdays' in data ?
+            doctor.setPreferredWeekdays(data.preferredWeekdays, true) :
+            data.preferredWeekdays = doctor.getPreferredWeekdays();
+        'locked' in data ?
+            data.locked && doctor.lockPreferences() :
+            data.locked = doctor.isLocked();
 
         // Update database.
         try {
@@ -526,10 +671,9 @@ export default function DutiesSetter() {
             const generalError = ("Błąd aktualizacji bazy danych. Zmienione dane " +
                 "nie zostały zachowane na serwerze i nie będą dostępne po " +
                 "odświeżeniu strony.");
-            setMessages((prevState) => ({
-                ...prevState,
-                general: generalError
-            }));
+            const header = 'Błąd przesyłania danych';
+            const variant = 'danger';
+            showAlert(generalError, header, variant);
             return false;
         }
         return doctor;
@@ -564,10 +708,9 @@ export default function DutiesSetter() {
                 "je ponownie później, klikając przycisk Zapisz w oknie " +
                 "lekarza po lewej. W przeciwnym razie zapisane zostaną " +
                 "preferencje domyślne.");
-            setMessages((prevState) => ({
-                ...prevState,
-                general: generalError
-            }));
+            const header = 'Błąd przesyłania danych';
+            const variant = 'danger';
+            showAlert(generalError, header, variant);
         }
     }
 
@@ -649,10 +792,9 @@ export default function DutiesSetter() {
             console.log(error);
             const generalError = ("Usunięcia nie zapisano na serwerze. " +
                 "Po odświeżeniu strony lekarz nadal będzie aktywny.");
-            setMessages((prevState) => ({
-                ...prevState,
-                general: generalError
-            }));
+            const header = 'Błąd przesyłania danych';
+            const variant = 'danger';
+            showAlert(generalError, header, variant);
             return false
         }
     }
@@ -660,29 +802,22 @@ export default function DutiesSetter() {
     const checkSettings = () => {
         const [result, logData] = appData.monthlyDuties.performChecks();
 
-        const logItems = logData.map((item, i) => <li key={i}>{item}</li>);
+        const header = 'Raport z weryfikacji ustawień';
+        log(logData, header);
 
-        const log = {
-            items: logItems, 
-            heading: 'Raport z weryfikacji ustawień'
-        };
-        
-        var info;
         if (!result) {
-            info = <p>Sprawdzono ustawienia i <strong>wykryto nieprawidłowości
+            const info = <p>Sprawdzono ustawienia i <strong>wykryto nieprawidłowości
                 </strong>, które mogą uniemożliwić ułożenie grafiku albo spowodować 
                 istotną zmianę ustawień lekarzy przez aplikację.<br/><br/>
                 Wyświetl <strong>log</strong>, aby zobaczyć szczegółowe 
                 informacje.</p>;
+            const header = "Wykryto błędy!";
+            const variant = 'warning';
+            showAlert(info, header, variant);
         } else {
-            info = <p><strong>Nie wykryto błędów.</strong></p>
+            const info = <p><strong>Nie wykryto błędów.</strong></p>
+            showAlert(info);
         }
-        
-        setMessages((prevData) => ({
-            ...prevData,
-            log: log,
-            info: info
-        }));
     }
 
     const saveToDisk = () => {
@@ -718,7 +853,6 @@ export default function DutiesSetter() {
         ];
         const workbook = xlsx.utils.book_new();
         xlsx.utils.book_append_sheet(workbook, worksheet, 'Dyżury');
-        console.log(data);
         xlsx.writeFileXLSX(workbook, `${year}-${month}_dyzury_${appData.unit.name}.xlsx`);
     }
 
@@ -734,19 +868,15 @@ export default function DutiesSetter() {
             await axiosInstance.put(url, data);
             const info = <p>Dyżury oraz preferencje lekarzy zostały
                 zapisane na serwerze.</p>;
-            setMessages((prevData) => ({
-                ...prevData,
-                info: info
-            }));
+            showAlert(info);
             hideSpinner();
         } catch (error) {
             console.log(error);
             const generalError = ("Nie udało się zapisać danych na serwerze.");
+            const header = 'Błąd przesyłania danych';
+            const variant = 'danger';
+            showAlert(generalError, header, variant);
             hideSpinner();
-            setMessages((prevState) => ({
-                ...prevState,
-                general: generalError
-            }));
         }
     }
 
@@ -754,6 +884,52 @@ export default function DutiesSetter() {
         appData.monthlyDuties.clearDuties(all);
         appData.monthlyDuties.updatePreferences();
         refreshState();
+    }
+
+    const log = (data, heading='Log', showLog=true) => {
+        const transformedData = transformLogData(data);
+        showLog && setStatsData((prevState) => ({
+            ...prevState,
+            hide: true
+        }));
+        setLogData((prevState) => ({
+            hide: showLog ? false : prevState.hide,
+            items: transformedData,
+            heading: heading
+        }));
+    }
+
+    const transformLogData = (logData) => {
+        const logItems = [];
+        logData.forEach((item, i) => {
+            logItems.push(<li key={i+1}>{item}</li>);
+        });
+        return logItems;
+    }
+
+    const toggleLog = () => {
+        setStatsData((prevState) => ({
+            ...prevState,
+            hide: true
+        }));
+        setLogData((prevState) => ({
+            ...prevState,
+            hide: !prevState.hide
+        }));
+    }
+
+    const toggleStatistics = () => {
+        if (statsData.hide) {
+            updateStatistics();
+        }
+        setLogData((prevState) => ({
+            ...prevState,
+            hide: true
+        }));
+        setStatsData((prevState) => ({
+            ...prevState,
+            hide: !prevState.hide
+        }))
     }
 
     const toggleHighlight = (doctor) => {
@@ -772,12 +948,19 @@ export default function DutiesSetter() {
         }
     }
 
+    const showAlert = (content, header='Sukces!', variant='success') => {
+        setAlertData({
+            show: true,
+            variant: variant,
+            header: header,
+            content: content,
+        });
+    }
+
     const dismissAlerts = () => {
-        setMessages((prevState) => ({
+        setAlertData((prevState) => ({
             ...prevState,
-            general: '',
-            settingError: '',
-            info: ''
+            show: false
         }));
     }
 
@@ -830,7 +1013,7 @@ export default function DutiesSetter() {
 
     doctorList.push(
         <Accordion.Item key={-1} eventKey={0} >
-            <Accordion.Header>+ Dodaj lekarza</Accordion.Header>
+            <Accordion.Header><span className="text-secondary">Dodaj lekarza</span></Accordion.Header>
             <Accordion.Body>
                 <DoctorActivateForm 
                     doctors={appData.inactiveDoctors} 
@@ -838,6 +1021,19 @@ export default function DutiesSetter() {
                 />
                 <hr />
                 <p className="fs-7">Brakuje profilu lekarza?<br/>Dodaj go w zakładce <Link to="/doctors/">lekarze</Link>.</p>
+            </Accordion.Body>
+        </Accordion.Item>
+    )
+
+    doctorList.unshift(
+        <Accordion.Item key={-2} eventKey={-1}>
+            <Accordion.Header><span className="text-secondary">Ustawienia grafiku</span></Accordion.Header>
+            <Accordion.Body>
+                <ScheduleSettings
+                    totalMaxDuties={totalMaxDuties()}
+                    totalDuties={totalDuties()}
+                    normalize={normalizeMaxDuties}
+                />
             </Accordion.Body>
         </Accordion.Item>
     )
@@ -857,14 +1053,14 @@ export default function DutiesSetter() {
                 setDoctorOnDuty={setDoctorOnDuty}
             />
             <DutyStatistics 
-                hide={hideStatistics} 
+                hide={statsData.hide} 
                 toggle={toggleStatistics} 
-                statistics={statistics} 
+                statistics={statsData.data} 
             />
             <Log 
-                hide={hideLog} 
+                hide={logData.hide} 
                 toggle={toggleLog} 
-                log={messages.log} 
+                log={logData} 
             />
             <Row className="duty-menu border-top">
                 <Col>
@@ -885,17 +1081,17 @@ export default function DutiesSetter() {
                     </ScheduleMenuButton>
                     <ScheduleMenuButton
                         className="border"
-                        variant="light"
+                        variant={logData.hide ? "light" : "secondary"}
                         onClick={toggleLog}
                     >
-                        {hideLog ? 'Pokaż' : 'Ukryj'} log
+                        {logData.hide ? 'Pokaż' : 'Ukryj'} log
                     </ScheduleMenuButton>
                     <ScheduleMenuButton
                         className="border"
-                        variant="light"
+                        variant={statsData.hide ? "light" : "secondary"}
                         onClick={toggleStatistics}
                     >
-                        {hideStatistics ? 'Pokaż' : 'Ukryj'} statystyki
+                        {statsData.hide ? 'Pokaż' : 'Ukryj'} statystyki
                     </ScheduleMenuButton>
                     <ScheduleMenuButton
                         className="border"
@@ -932,35 +1128,16 @@ export default function DutiesSetter() {
                 </Col>
             </Row>
             { 
-                messages.info && 
+                alertData.show && 
                 <Alert 
-                    variant={'success'} 
-                    header={"Sukces!"} 
+                    variant={alertData.variant} 
+                    header={alertData.header} 
                     dismiss={dismissAlerts}
                 >
-                    {messages.info}
+                    {alertData.content}
                 </Alert> 
             }
-            { 
-                messages.settingError && 
-                <Alert 
-                    variant={'warning'} 
-                    header={"Nie ułożono dyżurów!"} 
-                    dismiss={dismissAlerts}
-                >
-                    {messages.settingError}
-                </Alert>
-            }
-            { 
-                messages.general && 
-                <Alert 
-                    variant={'danger'} 
-                    header={"Błąd przesyłania danych!"} 
-                    dismiss={dismissAlerts}
-                >
-                    {messages.generalError}
-                </Alert>
-            }
+            
             {
                 modalData.show && 
                 <ConflictModal 
