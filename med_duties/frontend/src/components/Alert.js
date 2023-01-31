@@ -4,6 +4,9 @@ import BootstrapAlert from 'react-bootstrap/Alert';
 export default function Alert(props) {
     const [show, setShow] = useState(true);
     const dismiss = props.dismiss;
+    const clickToClose = Boolean(props.clickToClose);
+    const variant = props.variant || 'info';
+    const header = props.header || 'Uwaga!';
 
     useEffect(() => {
         setShow(true);
@@ -15,14 +18,26 @@ export default function Alert(props) {
     }
 
     if (show) {
-        return (
-            <BootstrapAlert className="position-fixed start-50 translate-middle-x border pointer alert-custom"
-                key={'info'} variant={props.variant ? props.variant : 'info'} onClick={handleClose} dismissible>
-                <BootstrapAlert.Heading>{props.header ? props.header : 'Uwaga!'}</BootstrapAlert.Heading>
-                {props.children}
-                <hr />
-                <small>Kliknij, by zamknąć.</small>
-            </BootstrapAlert>
-        );
+        if (clickToClose) {
+            return (
+                <BootstrapAlert className="position-fixed start-50 translate-middle-x border pointer alert-custom"
+                    key={'info'} variant={variant} onClick={handleClose} dismissible>
+                    <BootstrapAlert.Heading>{header}</BootstrapAlert.Heading>
+                    {props.children}
+                    <hr />
+                    <small>Kliknij, by zamknąć.</small>
+                </BootstrapAlert>
+            );
+        } else {
+            return (
+                <BootstrapAlert className="position-fixed start-50 translate-middle-x border alert-custom"
+                    key={'info'} variant={variant} onClose={handleClose} dismissible>
+                    <BootstrapAlert.Heading>{header}</BootstrapAlert.Heading>
+                    {props.children}
+                    <hr />
+                    <small>By zamknąć, kliknij krzyżyk w prawym górnym rogu</small>
+                </BootstrapAlert>
+            );
+        }
     }
 }

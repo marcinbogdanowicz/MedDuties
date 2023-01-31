@@ -187,11 +187,7 @@ const serializeDuties = (data) => {
 
 onmessage = (event) => {
     const data = event.data;
-    console.log(`Worker received message!`);
-    console.log(data);
-
     initialize(data);
     const result = setDuties();
-
     postMessage(result);
 };

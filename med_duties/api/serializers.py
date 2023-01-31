@@ -31,9 +31,10 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('pk', 'username', 'password', 'is_head_doctor',
+        fields = ('pk', 'username', 'password', 'email', 'is_head_doctor',
                   'unit', 'my_doctor')
-        extra_kwargs = {'my_doctor': {'read_only': True}}
+        extra_kwargs = {'my_doctor': {'read_only': True},
+                        'email': {'required': True}}
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)

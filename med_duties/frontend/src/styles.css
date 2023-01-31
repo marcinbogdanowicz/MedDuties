@@ -182,9 +182,19 @@ a:hover {
     background-color: var(--schedule-color-primary);
 }
 
+.duty-calendar-tile.weekend-holiday {
+    color: var(--schedule-color-light);
+    background: linear-gradient(225deg, var(--schedule-color-light) 0%, var(--schedule-color-light) 13%, var(--schedule-color-primary) 13%);
+}
+
 .inactive.duty-calendar-tile.weekend {
     color: var(--schedule-color-light);
     background-color: var(--schedule-color-gray);
+}
+
+.inactive.duty-calendar-tile.weekend-holiday {
+    color: var(--schedule-color-light);
+    background: linear-gradient(225deg, var(--schedule-color-light) 0%, var(--schedule-color-light) 13%, var(--schedule-color-gray) 13%);
 }
 
 .duty-calendar-tile.weekday {
@@ -192,9 +202,19 @@ a:hover {
     background-color: var(--schedule-color-light);
 }
 
+.duty-calendar-tile.weekday-holiday {
+    color: var(--schedule-color-primary);
+    background: linear-gradient(225deg, var(--schedule-color-primary) 0%, var(--schedule-color-primary) 13%, var(--schedule-color-light) 13%);
+}
+
 .inactive.duty-calendar-tile.weekday {
     color: var(--schedule-color-gray);
     background-color: var(--schedule-color-light);
+}
+
+.inactive.duty-calendar-tile.weekday-holiday {
+    color: var(--schedule-color-gray);
+    background: linear-gradient(225deg, var(--schedule-color-gray) 0%, var(--schedule-color-gray) 13%, var(--schedule-color-light) 13%);
 }
 
 .duty-calendar-tile-day {
@@ -377,6 +397,32 @@ a:hover {
     background-color: var(--schedule-color-light);
 }
 
+.my-offcanvas.expand {
+    height: 60vh !important;
+}
+
+.my-offcanvas-control {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 5em;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+}
+
+.my-offcanvas-resize-control {
+    font-size: 1.4rem;
+    color: hsl(0, 0%, 40.8%);
+    margin-right: 0.5em;
+    cursor: pointer;
+}
+
+.my-offcanvas-resize-control:hover {
+    color: hsl(0, 0%, 20%);
+}
+
 .log-content {
     height: 80%;
     width: 100%;
@@ -454,6 +500,10 @@ a:hover {
 
 .bg-schedule-light {
     background-color: var(--schedule-color-light);
+}
+
+.text-schedule-gray {
+    color: var(--schedule-color-gray-dark);
 }
 
 .overlay {

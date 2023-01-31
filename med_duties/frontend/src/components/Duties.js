@@ -37,7 +37,7 @@ export default function Duties() {
         pk: 0,
         monthandyear: '0/0',
         addedDoctors: 0,
-        duties: null,                
+        duties: null,
         numberOfDays: 0,
         weekendDays: 0,
         holidays: 0,
@@ -54,7 +54,6 @@ export default function Duties() {
         year: 0,
         yearMessage: ''
     });
-    const [errorMessage, setErrorMessage] = useState('');
     const [alertData, setAlertData] = useState({
         show: false,
         message: '',
@@ -76,6 +75,13 @@ export default function Duties() {
         });
         setSchedules(schedulesData);
     }, []);
+
+    useEffect(() => {
+        setNewSchedule((prevState) => ({
+            ...prevState,
+            month: 0
+        }));
+    }, [newSchedule.year])
 
     const hide = () => {
         setShow('');
@@ -101,7 +107,11 @@ export default function Duties() {
             setShow('scheduleDetails')
         } catch (error) {
             console.log(error);
-            setErrorMessage('Błąd pobierania danych.');
+            setAlertData({
+                show: true,
+                message: 'Błąd pobierania danych.',
+                header: null
+            });
         }
     }
     
@@ -220,7 +230,11 @@ export default function Duties() {
         } catch (error) {
             console.log(error);
             hideSpinner();
-            setErrorMessage('Nie udało się utworzyć grafiku.');
+            setAlertData({
+                show: true,
+                message: 'Nie udało się utworzyć grafiku.',
+                header: null
+            });
         }
     }
 
@@ -279,7 +293,7 @@ export default function Duties() {
                 pk: 0,
                 monthandyear: '0/0',
                 addedDoctors: 0,
-                duties: null,                
+                duties: null,
                 numberOfDays: 0,
                 weekendDays: 0,
                 holidays: 0,
@@ -292,7 +306,11 @@ export default function Duties() {
             });
         } catch (error) {
             console.log(error);
-            setErrorMessage('Nie udało się usunąć grafiku z bazy danych.')
+            setAlertData({
+                show: true,
+                message: 'Nie udało się usunąć grafiku z bazy danych.',
+                header: null
+            });
         }
     }
 
@@ -352,7 +370,7 @@ export default function Duties() {
             +
         </ScheduleTile>
     );
-    
+
     const scheduleDetailsView = (
         <React.Fragment>
             <h5>Grafik na { scheduleDetails.monthandyear }</h5>
@@ -418,19 +436,11 @@ export default function Duties() {
                     Usuń
                 </button>
             </div>
-            {
-                alertData.show &&
-                <Alert 
-                    header={alertData.header}
-                    variant="warning"
-                    dismiss={closeAlert}
-                >
-                    {alertData.message}
-                </Alert>
-            }
         </React.Fragment>
     );
 
+    const currYear = new Date().getFullYear();
+    const currMonth = new Date().getMonth() + 1;
     const newScheduleView = (
         <Form onSubmit={handleSubmit} >
             <h4 className="mb-4">Dodaj grafik</h4>
@@ -438,7 +448,7 @@ export default function Duties() {
                 <Form.Select name="year" value={newSchedule.year} onChange={handleChange}>
                     <option disabled value={0}>Wybierz rok</option>
                     {
-                        range(2022,2033).map((year, i) => {
+                        range(currYear,2033).map((year, i) => {
                             return <option key={`year-${i}`} value={year}>{year}</option>;
                         })
                     }
@@ -449,9 +459,13 @@ export default function Duties() {
                     <option disabled value={0}>Wybierz miesiąc</option>
                     {
                         newSchedule.year !== 0 &&
-                        range(1,13).map((month, i) => {
+                        range(1,13).filter(month => {
+                            if (newSchedule.year === currYear) {
+                                return month >= currMonth;
+                            }
+                            return true;
+                        }).map((month, i) => {
                             const disabled = schedules.find(s => (s.year === newSchedule.year && s.month === month));
-                            console.log(newSchedule.year, month, disabled);
                             return <option key={`month-${i}`} value={month} disabled={disabled}>{month}. {months[month]} {disabled ? '(istnieje)' : ''}</option>;
                         })
                     }
@@ -483,7 +497,17 @@ export default function Duties() {
                         <h5>Wybierz grafik by wyświetlić szczegóły</h5>
                     }
                 </div>
-            { errorMessage && <Alert>{errorMessage}</Alert> }
+                {
+                    alertData.show &&
+                    <Alert 
+                        header={alertData.header}
+                        variant="warning"
+                        dismiss={closeAlert}
+                        clickToClose
+                    >
+                        {alertData.message}
+                    </Alert>
+                }
             <OverlaySpinner show={spinnerData.show} content={spinnerData.content} />
         </div>
     );

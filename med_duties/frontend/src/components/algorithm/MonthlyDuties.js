@@ -641,7 +641,7 @@ class MonthlyDuties {
 
         // Keep looping until all duties are filled.
         while (true) {
-            console.log(`Steps: ${steps}. Frontier: ${frontier.frontier.length}. Depth: ${depth}`);     // TESTING
+            console.log(`Steps: ${steps}. Frontier: ${frontier.frontier.length}. Depth: ${depth}`);
 
             // If frontier is empty, there is no solution.
             if (frontier.empty()) {

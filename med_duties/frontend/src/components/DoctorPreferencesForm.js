@@ -21,7 +21,6 @@ export default function DoctorPreferencesForm(props) {
         preferredDays: [],
         preferredWeekdays: [],
         preferredPositions: [false, false, false],
-        locked: false,
     });
 
     useEffect(() => {
@@ -33,15 +32,13 @@ export default function DoctorPreferencesForm(props) {
             preferredPositions: doctor.unit.dutyPositions.map(position => {
                 return doctor.getPreferredPositions().includes(position);
             }),
-            locked: doctor.isLocked()
         }));
     }, [
         doctor.maxNumberOfDuties, 
         doctor.exceptions, 
         doctor.preferredDays, 
         doctor.preferredWeekdays, 
-        doctor.preferredPositions, 
-        doctor.locked
+        doctor.preferredPositions
     ]);
 
     const inputHandler = (event) => {
@@ -54,8 +51,6 @@ export default function DoctorPreferencesForm(props) {
             name = 'preferredPositions';
             positions.splice(index,1,value);
             value = positions;
-        } else if (name === 'locked') {
-            value = event.target.checked;
         } else if (name === 'maxDuties') {
             value = parseInt(value);
             if (value && (isNaN(value) || value > maximumDuties)) {
@@ -119,10 +114,9 @@ export default function DoctorPreferencesForm(props) {
                 data.preferredPositions.push(index + 1);
             }
         });
-        data.locked = doctorData.locked;
 
         const updatedDoctor = updateDoctor(data);
-        
+
         if (updatedDoctor) {
             setMessages({success: 'Zapisano.'});
             doctor = updatedDoctor;
@@ -191,9 +185,6 @@ export default function DoctorPreferencesForm(props) {
                     { messages.preferredPositions && <Form.Text className="text-danger">{ messages.preferredPositions }</Form.Text> }
                 </Form.Group>
                 <hr />
-                <Form.Group className="mb-3">
-                    <Form.Check type="checkbox" name="locked" label="Zablokuj ustawienia" id={`lock-doc-${doctor.pk}`} checked={doctorData.locked} onChange={inputHandler} />
-                </Form.Group>
                 <Form.Group>
                     <WithTooltip message='Lekarza możesz dodać z powrotem w zakładce "Dodaj lekarza" na dole strony.'>
                         <Form.Control type="submit" value="Usuń z grafiku" className='btn btn-light border' onClick={removeHandler} />

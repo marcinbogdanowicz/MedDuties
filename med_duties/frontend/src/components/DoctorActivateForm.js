@@ -15,7 +15,7 @@ export default function DoctorActivateForm(props) {
             );
         });
     }
-    
+
     const handleChange = (event) => {
         setDoctor(event.target.value);
     }
@@ -48,7 +48,7 @@ export default function DoctorActivateForm(props) {
                 <Form.Group className="mb-4">
                     <Form.Label>Imię</Form.Label>
                     <Form.Select value={doctor} onChange={handleChange}>
-                        <option disabled value={0}>Wybierz...</option>
+                        <option disabled value={0}>{ disabled ? "Brak dostępnych lekarzy" : "Wybierz..." }</option>
                         {options}
                     </Form.Select>
                 </Form.Group>

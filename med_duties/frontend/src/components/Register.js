@@ -102,11 +102,18 @@ export default function Register() {
             // Other errors should be displayed in alert as 'general' error.
                 setErrors((prevState) => ({
                     ...prevState,
-                    general: 'Wystąpił błąd.'
+                    general: 'Błąd przesyłania danych. Konto nie zostało utworzone.'
                 }))
                 console.log(error);
             }
         }
+    }
+
+    const dismissAlert = () => {
+        setErrors((prevState) => ({
+            ...prevState,
+            general: ''
+        }))
     }
 
     return (
@@ -198,7 +205,7 @@ export default function Register() {
                 
             </Form>
             { 
-                errors.general && <Alert>{errors.general}</Alert>
+                errors.general && <Alert dismiss={dismissAlert} variant="danger" header="Błąd" clickToClose>{errors.general}</Alert>
             }
         </MenuRow>
     );

@@ -185,7 +185,7 @@ export default function Statistics() {
         ['schedulesCount', 'M-ce'],
         ['avgDuties', 'Dyżury'],
         ['avgWeekends', 'Weekendy'],
-        ['avgWeekendDays', 'Dyż. w week.'],
+        ['avgWeekendDays', 'Pt-Nd'],
         ['avgMon', 'Pon'],
         ['avgTue', 'Wto'],
         ['avgWed', 'Śro'],
@@ -193,6 +193,7 @@ export default function Statistics() {
         ['avgFri', 'Pią'],
         ['avgSat', 'Sob'],
         ['avgSun', 'Nie'],
+        ['avgStrain', 'Obciążenie'],
     ]);
 
     const rightCol = (
@@ -242,6 +243,7 @@ export default function Statistics() {
                         header={alertData.header}
                         variant="warning"
                         dismiss={closeAlert}
+                        clickToClose
                     >
                         {alertData.message}
                     </Alert>

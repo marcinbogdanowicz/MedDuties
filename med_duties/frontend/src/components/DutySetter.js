@@ -6,7 +6,6 @@ import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import ScheduleSettings from './ScheduleSettings';
 import ScheduleMenuButton from './ScheduleMenuButton';
-import ConflictModal from './ConflictModal';
 import ColumnLayout from './ColumnLayout';
 import OverlaySpinner from './OverlaySpinner';
 import Alert from './Alert';
@@ -55,12 +54,16 @@ export default function DutiesSetter() {
         inactiveDoctors: [],
         monthlyDuties: {}
     });
+    const [dutiesHistory, setDutiesHistory] = useState({
+        history: [],
+        position: 0
+    });
     const [alertData, setAlertData] = useState({
         show: false,
         variant: '',
         header: '',
         content: '',
-
+        clickToClose: true
     });
     const [logData, setLogData] = useState({
         hide: true,
@@ -75,14 +78,6 @@ export default function DutiesSetter() {
     const [spinnerData, setSpinnerData] = useState({
         show: false,
         content: []
-    });
-    const [modalData, setModalData] = useState({
-        show: false,
-        body: '',
-        btnAFunc: ()=>{},
-        btnAVal: '',
-        btnBFunc: ()=>{},
-        btnBVal: ''
     });
 
     // Init max number of duties.
@@ -235,11 +230,18 @@ export default function DutiesSetter() {
             inactiveDoctors: inactiveDoctors,
             monthlyDuties: monthlyDuties,
         });
+
+        // Initialize first history state.
+        //const serializedDuties = serializeDuties(duties);
+        //saveDutiesHistory(serializedDuties);
     }, []);
 
     const setDuties = () => {
         // Cancel previous error messages.
         dismissAlerts();
+
+        // Save history.
+        saveDutiesHistory();
 
         showSpinner(
             'Układam dyżury...', 
@@ -336,9 +338,6 @@ export default function DutiesSetter() {
     const serializeMonthlyDuties = () => {
         const month = appData.monthlyDuties.month;
         const year = appData.monthlyDuties.year;
-        const duties = ([...appData.monthlyDuties.getDuties().values()]
-            .map(item => Object.values(item))
-            .flat());
         const data = {
             pk: appData.monthlyDuties.getPk(),
             monthandyear: `${month}/${year}`
@@ -356,8 +355,22 @@ export default function DutiesSetter() {
                 locked: doctor.isLocked()
             }));
         }
+        const duties = serializeDuties();
         if (duties.length) {
-            data.duties = duties.map(duty => {
+            data.duties = duties;
+        }
+
+        return data;
+    }
+
+    const serializeDuties = (d=null) => {
+        const duties = d || (
+            [...appData.monthlyDuties.getDuties().values()]
+            .map(item => Object.values(item))
+            .flat()
+        );
+        if (duties.length) {
+            return duties.map(duty => {
                 const mapped = {
                     day: duty.getDay().number,
                     weekday: duty.getDay().weekday,
@@ -372,9 +385,9 @@ export default function DutiesSetter() {
                 doctor ? mapped['doctor'] = doctor.getPk() : mapped['doctor'] = null;
                 return mapped;
             });
+        } else {
+            return [];
         }
-
-        return data;
     }
 
     const serializeDoctors = () => {
@@ -391,54 +404,62 @@ export default function DutiesSetter() {
         return data;
     }
 
+    const dispatchDuties = (duties) => {
+        const result = duties.map(duty => {
+            const doctor = duty.doctor ? 
+                appData.doctors.find(doctor => doctor.pk === duty.doctor) :
+                null;
+            const day = appData.monthlyDuties.getDays().find(day => day.number === duty.day);
+            return new Duty(day, doctor, duty.position, duty.strain_points, duty.pk, duty.user_set);
+        });
+        appData.monthlyDuties.addDuties(result);
+    }
+
     const setDoctorOnDuty = (duty, doctor) => {
-        var userSet = false;
-        if (doctor) {
-            userSet = true;
-
-            // If there is a collision with preferred days,
-            // make sure user solves it and function is rerun.
-            const date = duty.getDay().number;
-            const preferredDays = doctor.getPreferredDays();
-            if (preferredDays.includes(date+1) || preferredDays.includes(date-1)) {
-
-                const collision = preferredDays.filter(day => 
-                    (day === date+1 || day === date-1));
-                const month = appData.monthlyDuties.month;
-                const year = appData.monthlyDuties.year;
-                const body = <p>
-                    Próbujesz dodać dyżur lekarza <strong>{doctor.name}</strong> w 
-                    dzień <strong>{date}/{month}/{year}</strong>.<br />
-                    Tymczasem {doctor.name} chce otrzymać 
-                    dyżur <strong>{collision.map(d => `${d}/${month}/${year}`).join(' i ')}</strong>.<br />
-                    Spowoduje to powstanie dyżuru przekraczającego 24 godziny.<br /><br />
-                    <strong>Możesz usunąć kolidujące dni z preferencji albo cofnąć 
-                    dodawanie dyżuru.</strong><br />
-                    <i className="fs-7 fw-light">Zmiana preferencji nie zostanie zapisana na serwerze, 
-                    dopóki nie zapiszesz ustawień lekarza lub całego grafiku.</i>
-                </p>
-                const changePref = (collision) => {
-                    const newPreferredDays = preferredDays.filter(d => !collision.includes(d));
-                    doctor.setPreferredDays(newPreferredDays);
-                    setDoctorOnDuty(duty, doctor);
-                    hideModal();
-                }
-
-                setModalData((prevState) => ({
-                    ...prevState,
-                    show: true,
-                    body: body,
-                    btnAVal: 'Zmień preferencje',
-                    btnAFunc: () => changePref(collision),
-                    btnBVal: 'Cofnij dyżur',
-                    btnBFunc: hideModal
-                }));
-                return;
-            }
-        }
+        let userSet = false;
+        doctor && (userSet = true);
+        saveDutiesHistory();
         appData.monthlyDuties.changeDoctor(duty, doctor, userSet);
         appData.monthlyDuties.updatePreferences();
         setAppData((prevData) => ({...prevData}));
+        updateStatistics();
+    }
+
+    const saveDutiesHistory = (duties=serializeDuties()) => {
+        const newHistory = [...dutiesHistory.history.slice(0, dutiesHistory.position)];
+        newHistory.push(duties);
+        if (newHistory.length > 6) {
+            newHistory.shift();
+        }
+        const newPosition = newHistory.length;
+        setDutiesHistory({
+            history: newHistory,
+            position: newPosition
+        });
+    }
+
+    const historyMoveBack = () => {
+        let newPosition = dutiesHistory.position - 1;
+        const newHistory = [...dutiesHistory.history];
+        if (dutiesHistory.position === dutiesHistory.history.length) {
+            newHistory.push(serializeDuties());
+            newHistory.length > 7 && newHistory.shift();
+        }
+        dispatchDuties(dutiesHistory.history[newPosition]);
+        setDutiesHistory({
+            history: newHistory,
+            position: newPosition
+        });
+        updateStatistics();
+    }
+
+    const historyMoveForward = () => {
+        const newPosition = dutiesHistory.position + 1;
+        dispatchDuties(dutiesHistory.history[newPosition]);
+        setDutiesHistory((prevState) => ({
+            ...prevState,
+            position: newPosition
+        }));
         updateStatistics();
     }
 
@@ -471,10 +492,6 @@ export default function DutiesSetter() {
             return [false, 'Zbyt mało lekarzy.']
         }
 
-        console.log('Init:');
-        console.log(`Diff: ${diff()}`);
-        console.log(doctors.map(d => `${d.name}: ${d.getMaxNumberOfDuties()}`));
-
         // Check if goal is already achieved.
         if (diff() === 0) {
             return [false, "Lekarze deklarują właściwą liczbę dyżurów."];
@@ -486,10 +503,6 @@ export default function DutiesSetter() {
             normalize(doctors, factor());
             if (i > 5) { break; }
             i++;
-
-            console.log('Normalized:');
-            console.log(`Diff: ${diff()}`);
-            console.log(doctors.map(d => `${d.name}: ${d.getMaxNumberOfDuties()}`));
         }
 
         while (diff() !== 0) {
@@ -497,11 +510,6 @@ export default function DutiesSetter() {
             const candidate = getDoctorWithExtremeMax(doctors, diff());
             const modifier = (diff() / Math.abs(diff()));
             candidate.setMaxNumberOfDuties(candidate.getMaxNumberOfDuties() + modifier);
-
-            console.log('Tuned:');
-            console.log(`Diff: ${diff()}`);
-            console.log(`Changed doctor: ${candidate.name}`);
-            console.log(doctors.map(d => `${d.name}: ${d.getMaxNumberOfDuties()}`));
         }
 
         const newMaxDuties = getMaxDuties(doctors);
@@ -762,7 +770,40 @@ export default function DutiesSetter() {
         return true;
     }
 
-    const removeDoctor = async (pk) => {
+    const removeDoctor = (pk) => {
+        const header = "Usuwasz lekarza z grafiku";
+        const variant = "warning";
+        const content = (
+            <div>
+                <p>Zamierzasz usunąć lekarza z grafiku. Spowoduje to <strong>usunięcie
+                jego preferencji oraz przyznanych dyżurów</strong>. Profil lekarza 
+                w ramach oddziału pozostanie niezmieniony
+                i będzie go można dodać do grafiku ponownie.<br/><br/> 
+                <strong>Aktualne preferencje i dyżury lekarza mogą być przywrócone jedynie
+                w czasie obecnej sesji</strong> - po zamknięciu lub odświeżeniu strony
+                zostaną utracone. Odzyskane dyżury będą widoczne po cofnięciu historii o 1.<br/><br/>
+                Czy chcesz kontynuować?</p>
+                <div>
+                    <button 
+                        className='btn btn-warning'
+                        onClick={() => _remove(pk)}
+                    >
+                        Usuń
+                    </button>
+                    <button 
+                        className='btn btn-success ms-4' 
+                        onClick={dismissAlerts}
+                    >
+                        Anuluj
+                    </button>
+                </div>
+            </div>
+        );
+        showAlert(content, header, variant);
+    }
+
+    const _remove = async (pk) => {
+        saveDutiesHistory();
         appData.monthlyDuties.removeDoctor(pk);
         appData.unit.removeDoctor(pk);
 
@@ -777,6 +818,7 @@ export default function DutiesSetter() {
             doctors: newDoctors,
             inactiveDoctors: newInactiveDoctors
         }));
+        setHighlight('');
 
         try {
             const month = appData.monthlyDuties.month;
@@ -787,7 +829,6 @@ export default function DutiesSetter() {
                 pk: removedDoctor.getSettingsPk()
             });
             removedDoctor.setSettingsPk(null);
-            return true;
         } catch (error) {
             console.log(error);
             const generalError = ("Usunięcia nie zapisano na serwerze. " +
@@ -795,7 +836,6 @@ export default function DutiesSetter() {
             const header = 'Błąd przesyłania danych';
             const variant = 'danger';
             showAlert(generalError, header, variant);
-            return false
         }
     }
 
@@ -880,7 +920,61 @@ export default function DutiesSetter() {
         }
     }
 
-    const clearDuties = (all=false) => {
+    const clearDuties = () => {
+        const header = "Usuwanie grafiku"
+        const variant = 'warning';
+        const removeContent = (
+            <div>
+                <p>Możesz usunąć jedynie <strong>dyżury ułożone przez program</strong>, albo wszystkie,
+                czyli także <strong>ułożone przez użytkownika.</strong></p>
+                <div>
+                    <button 
+                        className='btn btn-warning'
+                        onClick={() => _clear()}
+                    >
+                        Usuń
+                    </button>
+                    <button 
+                        className='btn btn-danger ms-4'
+                        onClick={() => _clear(true)}
+                    >
+                        Usuń wszytko
+                    </button>
+                    <button 
+                        className='btn btn-success ms-4' 
+                        onClick={dismissAlerts}
+                    >
+                        Anuluj
+                    </button>
+                </div>
+            </div>
+        )
+        const confirmContent = (
+            <div>
+                <p>Przycisk "wyczyść" powoduje <strong>usunięcie z grafiku 
+                ułożonych dyżurów.</strong><br/>
+                Czy chcesz kontynuować?</p>
+                <div>
+                    <button 
+                        className='btn btn-warning'
+                        onClick={() => showAlert(removeContent, header, variant)}
+                    >
+                        Kontynuuj
+                    </button>
+                    <button 
+                        className='btn btn-success ms-4' 
+                        onClick={dismissAlerts}
+                    >
+                        Anuluj
+                    </button>
+                </div>
+            </div>
+        );
+        showAlert(confirmContent, header, variant, false);
+    }
+
+    const _clear = (all=false) => {
+        saveDutiesHistory();
         appData.monthlyDuties.clearDuties(all);
         appData.monthlyDuties.updatePreferences();
         refreshState();
@@ -948,12 +1042,13 @@ export default function DutiesSetter() {
         }
     }
 
-    const showAlert = (content, header='Sukces!', variant='success') => {
+    const showAlert = (content, header='Sukces!', variant='success', clickToClose=true) => {
         setAlertData({
             show: true,
             variant: variant,
             header: header,
             content: content,
+            clickToClose: clickToClose
         });
     }
 
@@ -1096,18 +1191,28 @@ export default function DutiesSetter() {
                     <ScheduleMenuButton
                         className="border"
                         variant="light"
-                        tooltip="Usuwa dyżury (poza ułożonymi przez użytkownika)"
-                        onClick={() => clearDuties(false)}
+                        tooltip="Usuwa dyżury z grafiku"
+                        onClick={clearDuties}
                     >
                         Wyczyść
                     </ScheduleMenuButton>
                     <ScheduleMenuButton
                         className="border"
                         variant="light"
-                        tooltip="Usuwa dyżury (w tym ułożone przez użytkownika)"
-                        onClick={() => clearDuties(true)}
+                        tooltip="Cofnij zmianę w grafiku"
+                        onClick={historyMoveBack}
+                        disabled={dutiesHistory.position < 1}
                     >
-                        Wyczyść wszystko
+                        <i className="bi bi-skip-backward-fill"></i>
+                    </ScheduleMenuButton>
+                    <ScheduleMenuButton
+                        className="border"
+                        variant="light"
+                        tooltip="Ponów zmianę w grafiku"
+                        onClick={historyMoveForward}
+                        disabled={dutiesHistory.position >= (dutiesHistory.history.length-1)}
+                    >
+                        <i className="bi bi-skip-forward-fill"></i>
                     </ScheduleMenuButton>
                     <ScheduleMenuButton
                         className="border"
@@ -1120,7 +1225,7 @@ export default function DutiesSetter() {
                     <ScheduleMenuButton
                         className="border"
                         variant="success"
-                        tooltip="Zapisuje grafik na serwerze"
+                        tooltip="Zapisuje widoczny na ekranie grafik na serwerze. Nie zapisuje historii."
                         onClick={saveSchedule}
                     >
                         Zapisz
@@ -1133,17 +1238,10 @@ export default function DutiesSetter() {
                     variant={alertData.variant} 
                     header={alertData.header} 
                     dismiss={dismissAlerts}
+                    clickToClose={alertData.clickToClose}
                 >
                     {alertData.content}
                 </Alert> 
-            }
-            
-            {
-                modalData.show && 
-                <ConflictModal 
-                    modalData={modalData} 
-                    hideModal={hideModal}
-                />
             }
             {
                 <OverlaySpinner show={spinnerData.show} content={spinnerData.content} />

@@ -59,8 +59,18 @@ export default function Schedule(props) {
             });
             // Create day number.
             const day = monthlyDuties.getDay(i);
+            let dayClass = "weekday";
+            if (day.weekday === 5 || day.weekday === 6) {
+                if (day.category === 'holiday') {
+                    dayClass = "weekend-holiday";
+                } else {
+                    dayClass = "weekend";
+                }
+            } else if (day.category === 'holiday') {
+                dayClass = 'weekday-holiday';
+            }
             rowContent.unshift(
-                <Col md={1} key={`${i}-0`} className={"border-2 border-light duty-calendar-tile " + (day.weekday === 5 || day.weekday === 6 ? "weekend" : "weekday") + (mobile ? "" : " border-end")}>
+                <Col md={1} key={`${i}-0`} className={"border-2 border-light duty-calendar-tile " + dayClass + (mobile ? "" : " border-end")}>
                     <p className="duty-calendar-tile-day">{i}</p>
                     <p className="duty-calendar-tile-weekday">{weekdays[day.weekday]}</p>
                 </Col>
@@ -107,11 +117,21 @@ export default function Schedule(props) {
                 );
             });
             // Create day number.
-            const weekday = getWeekday(currYear, currMonth, currDay);
+            const day = new Day(currYear, currMonth, currDay);
+            let dayClass = "weekday";
+            if (day.weekday === 5 || day.weekday === 6) {
+                if (day.category === 'holiday') {
+                    dayClass = "weekend-holiday";
+                } else {
+                    dayClass = "weekend";
+                }
+            } else if (day.category === 'holiday') {
+                dayClass = 'weekday-holiday';
+            }
             rowContent.unshift(
-                <Col md={1} key={`${currMonth}-${currDay}-0`} className={"border-2 border-light duty-calendar-tile inactive " + (weekday === 5 || weekday === 6 ? "weekend" : "weekday") + (mobile ? "" : " border-end")}>
+                <Col md={1} key={`${currMonth}-${day.number}-0`} className={"border-2 border-light duty-calendar-tile inactive " + dayClass + (mobile ? "" : " border-end")}>
                     <p className="duty-calendar-tile-day">{currDay}</p>
-                    <p className="duty-calendar-tile-weekday">{weekdays[weekday]}</p>
+                    <p className="duty-calendar-tile-weekday">{weekdays[day.weekday]}</p>
                 </Col>
             );
             return rowContent;

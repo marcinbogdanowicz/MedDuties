@@ -337,119 +337,126 @@ export default function Doctors() {
     );
 
     const leftCol = (
-        <div className="d-flex justify-content-center">
-            <div className="m-5 w-100">
-                {
-                    !show &&
-                    <h5>Wybierz lekarza, by wyświetlić szczegóły</h5>
-                }
-                {
-                    show === 'doctorDetail' &&
-                    <React.Fragment>
-                        <h4 className="mb-4"><i className="bi bi-person-circle"></i> { doctorDetail.name }</h4>
-                        <h6><strong>Statystyki</strong></h6>
-                        <hr className="m-1" />
-                        <table className="left-col-detail-table">
-                            <tbody>
-                                <tr>
-                                    <td>Obsadza miesięcy</td>
-                                    <td>{ doctorDetail.schedulesCount }</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Średnio miesięcznie:</strong></td>
-                                    <td></td>
-                                </tr>
-                                <tr>
-                                    <td>Liczba dyżurów</td>
-                                    <td>{ doctorDetail.avgDuties }</td>
-                                </tr>
-                                <tr>
-                                    <td>Poniedziałki</td>
-                                    <td>{ doctorDetail.avgMon }</td>
-                                </tr>
-                                <tr>
-                                    <td>Wtorki</td>
-                                    <td>{ doctorDetail.avgTue }</td>
-                                </tr>
-                                <tr>
-                                    <td>Środy</td>
-                                    <td>{ doctorDetail.avgWed }</td>
-                                </tr>
-                                <tr>
-                                    <td>Czwartki</td>
-                                    <td>{ doctorDetail.avgThu }</td>
-                                </tr>
-                                <tr>
-                                    <td>Piątki</td>
-                                    <td>{ doctorDetail.avgFri }</td>
-                                </tr>
-                                <tr>
-                                    <td>Soboty</td>
-                                    <td>{ doctorDetail.avgSat }</td>
-                                </tr>
-                                <tr>
-                                    <td>Niedziele</td>
-                                    <td>{ doctorDetail.avgSun }</td>
-                                </tr>
-                                <tr>
-                                    <td>Dni weekendowe</td>
-                                    <td>{ doctorDetail.avgWeekendDays }</td>
-                                </tr>
-                                <tr>
-                                    <td>Weekendy na dyżurze</td>
-                                    <td>{ doctorDetail.avgWeekends }</td>
-                                </tr>
-                                <tr>
-                                    <td>Obciążenie (pkt.)</td>
-                                    <td>{ doctorDetail.avgStrain }</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <div className="d-flex justify-content-between mt-4">
-                            <button 
-                                onClick={() => setShow('editDoctor')} 
-                                className="btn btn-primary mb-3 w-45"
-                            >
-                                Edytuj
-                            </button>
-                            <button 
-                                onClick={removeDoctor}
-                                className="btn btn-light border mb-3 w-45"
-                            >
-                                Usuń
-                            </button>
+        <div>
+            { show && <p className="ms-1 mt-1 text-schedule-darkgray"><i className="bi bi-people-fill"></i> { doctors.length }</p>}
+            <div className="d-flex justify-content-center">
+                <div className="mx-5 my-4 w-100">
+                    {
+                        !show &&
+                        <React.Fragment>
+                            <h5>Liczba lekarzy: { doctors.length }</h5>
+                            <p>Wybierz lekarza, by wyświetlić szczegóły</p>
+                        </React.Fragment>
+                    }
+                    {
+                        show === 'doctorDetail' &&
+                        <React.Fragment>
+                            <h4 className="mb-4"><i className="bi bi-person-circle"></i> { doctorDetail.name }</h4>
+                            <h6><strong>Statystyki</strong></h6>
+                            <hr className="m-1" />
+                            <table className="left-col-detail-table">
+                                <tbody>
+                                    <tr>
+                                        <td>Obsadza miesięcy</td>
+                                        <td>{ doctorDetail.schedulesCount }</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Średnio miesięcznie:</strong></td>
+                                        <td></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Liczba dyżurów</td>
+                                        <td>{ doctorDetail.avgDuties }</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Poniedziałki</td>
+                                        <td>{ doctorDetail.avgMon }</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Wtorki</td>
+                                        <td>{ doctorDetail.avgTue }</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Środy</td>
+                                        <td>{ doctorDetail.avgWed }</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Czwartki</td>
+                                        <td>{ doctorDetail.avgThu }</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Piątki</td>
+                                        <td>{ doctorDetail.avgFri }</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Soboty</td>
+                                        <td>{ doctorDetail.avgSat }</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Niedziele</td>
+                                        <td>{ doctorDetail.avgSun }</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Dni weekendowe</td>
+                                        <td>{ doctorDetail.avgWeekendDays }</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Weekendy na dyżurze</td>
+                                        <td>{ doctorDetail.avgWeekends }</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Obciążenie (pkt.)</td>
+                                        <td>{ doctorDetail.avgStrain }</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div className="d-flex justify-content-between mt-4">
+                                <button 
+                                    onClick={() => setShow('editDoctor')} 
+                                    className="btn btn-primary mb-3 w-45"
+                                >
+                                    Edytuj
+                                </button>
+                                <button 
+                                    onClick={removeDoctor}
+                                    className="btn btn-light border mb-3 w-45"
+                                >
+                                    Usuń
+                                </button>
+                            </div>
+                        </React.Fragment>
+                    }
+                    {
+                        show === 'newDoctor' &&
+                        <div className="d-flex flex-column mt-4">
+                            <h5>Nowy lekarz</h5>
+                            <DoctorDataForm 
+                                handleData={createDoctor}
+                            />
                         </div>
-                    </React.Fragment>
-                }
-                {
-                    show === 'newDoctor' &&
-                    <div className="d-flex flex-column mt-4">
-                        <h5>Nowy lekarz</h5>
-                        <DoctorDataForm 
-                            handleData={createDoctor}
-                        />
-                    </div>
-                }
-                {
-                    show === 'editDoctor' &&
-                    <div className="d-flex flex-column mt-4">
-                        <h4 className="mb-4"><i className="bi bi-person-circle"></i> { doctorDetail.name }</h4>
-                        <h5>Nowe dane</h5>
-                        <DoctorDataForm 
-                            handleData={editDoctor}
-                        />
-                    </div>
-                }
-                {
-                    alertData.show &&
-                    <Alert 
-                        header={alertData.header}
-                        variant="warning"
-                        dismiss={closeAlert}
-                    >
-                        {alertData.message}
-                    </Alert>
-                }
+                    }
+                    {
+                        show === 'editDoctor' &&
+                        <div className="d-flex flex-column mt-4">
+                            <h4 className="mb-4"><i className="bi bi-person-circle"></i> { doctorDetail.name }</h4>
+                            <h5>Nowe dane</h5>
+                            <DoctorDataForm 
+                                handleData={editDoctor}
+                            />
+                        </div>
+                    }
+                    {
+                        alertData.show &&
+                        <Alert 
+                            header={alertData.header}
+                            variant="warning"
+                            dismiss={closeAlert}
+                            clickToClose
+                        >
+                            {alertData.message}
+                        </Alert>
+                    }
+                </div>
             </div>
         </div>
     );

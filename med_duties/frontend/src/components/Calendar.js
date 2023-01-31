@@ -41,7 +41,6 @@ export default function Calendar(props) {
             }
             // Exclude days adjacent to preferred ones (no double duties).
             if (preferredDays.includes(day.number)) {
-                console.log(`Day ${day.number} is preferred. Unaccepting ${day.number-1} and ${day.number + 1}`);
                 day.number > 1 && acceptedDays.current.set(day.number - 1, false);
                 day.number < length && acceptedDays.current.set(day.number + 1, false);
                 continue;
@@ -77,9 +76,6 @@ export default function Calendar(props) {
 
     const normalizeMaxDuties = (prefDays=doctorData.preferredDays.length) => {
         const count = acceptedDaysCount();
-        console.log(`Accepted days: ${count}`);
-        console.log(`Max duties: ${doctorData.maxDuties}`);
-        console.log(`Pref days: ${prefDays}`);
         const maxDuties = doctorData.maxDuties;
         if (maxDuties > count) {
             setDoctorData((prevState) => ({
@@ -218,7 +214,6 @@ export default function Calendar(props) {
                 }
                 setPreferredWeekday(day);
         }
-        console.log(acceptedDays.current);
     }
 
     var currWeek = [];

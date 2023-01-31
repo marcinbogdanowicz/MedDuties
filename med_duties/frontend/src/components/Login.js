@@ -36,6 +36,10 @@ export default function Login() {
         }
     }
 
+    const dismissAlert = () => {
+        setMessage('');
+    }
+
     return (
         <MenuRow addedClass={mobile ? "login-register-mobile" : "login-register"}>
             <Form onSubmit={handleSubmit}>
@@ -54,7 +58,7 @@ export default function Login() {
                 <p>Nie masz konta? Utwórz je <Link to="/register/">tutaj</Link>.</p>
             </Form>
             { 
-                message && <Alert>{message}</Alert> 
+                message && <Alert dismiss={dismissAlert} variant="danger" header="Błąd!" clickToClose>{message}</Alert> 
             }
         </MenuRow>
     );
