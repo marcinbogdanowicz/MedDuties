@@ -16,6 +16,13 @@
     --schedule-tile-height: 10vw;
     --schedule-logo-width: 25vw;
     --schedule-logo-height: 10vw;
+    --schedule-logo-min-height: 7rem;
+    --schedule-left-col-height: calc(100vh - var(--schedule-logo-height));
+    --schedule-left-col-max-height: calc(100vh - var(--schedule-logo-min-height));
+    --schedule-duty-view-height: calc(100vh - var(--schedule-duty-menu-height));
+    --schedule-duty-view-min-height: 88vh;
+    --schedule-duty-menu-height: 10vw;
+    --schedule-duty-menu-max-height: 12vh;
 }
 
 a {
@@ -27,8 +34,26 @@ a:hover {
     color: var(--schedule-color-primary);
 }
 
+a.highlight-link {
+    color: var(--schedule-color-primary);
+}
+
+a.highlight-link:hover {
+    color: var(--schedule-color-primary-third);
+}
+
+a.light-link {
+    color: var(--schedule-color-lightgray);
+}
+
+a.light-link:hover {
+    color: white;
+}
+
 .tile-table {
-    padding: 7.5vw;
+    padding-top: 7.5vw;
+    padding-bottom: 7.5vw;
+    padding-left: 7.5vw;
     background-color: var(--schedule-color-lightgray);
     min-height: 100vh;
 }
@@ -118,6 +143,7 @@ a:hover {
 }
 
 .logo {
+    min-height: var(--schedule-logo-min-height);
     height: var(--schedule-logo-height);
     width: var(--schedule-logo-width);
     padding-left: 3rem;
@@ -134,8 +160,8 @@ a:hover {
 }
 
 .left-col {
-    min-height: 80vh;
-    max-height: 80vh;
+    max-height: calc(100vh - 7rem);
+    height: var(--schedule-left-col-height);
     overflow-y: scroll;
     padding: 0;
     margin: 0;
@@ -150,13 +176,14 @@ a:hover {
 }
 
 .duty-view {
-    height: 88vh;
-    max-height: 88vh;
+    min-height: var(--schedule-duty-view-min-height);
+    height: var(--schedule-duty-view-height);
     overflow-y: scroll;
 }
 
 .duty-menu {
-    height: 12vh;
+    max-height: var(--schedule-duty-menu-max-height);
+    height: var(--schedule-duty-menu-height);
 }
 
 .duty-menu .col {
@@ -463,6 +490,11 @@ a:hover {
     -webkit-user-select: none;
     -ms-user-select: none;
     user-select: none;
+    text-align: right;
+}
+
+.stat-table td {
+    text-align: right;
 }
 
 .link {
@@ -532,8 +564,99 @@ a:hover {
     padding-bottom: 3rem;
     padding-left: 6rem;
     padding-right: 6rem;
-    backdrop-filter: blur(2px);
-    mask: radial-gradient(rgb(0, 0, 0) 50%, rgba(0, 0, 0, 0.0) 80%);
+}
+
+.overlay-window {
+    width: 80vw;
+    max-width: 1024px;
+    min-height: 25vh;
+    max-height: 95vh;
+    background-color: var(--schedule-color-light);
+    padding: 5rem;
+    color: black;
+}
+
+.overlay-window-content {
+    width: 100%;
+    height: 100%;
+    max-height: calc(95vh - 10rem);
+    overflow: scroll;
+}
+
+.overlay-window-body p {
+    line-height: 1.35;
+}
+
+.overlay-window-body ol {
+    list-style: none;
+    counter-reset: window-counter;
+}
+
+.overlay-window-body ol li {
+    counter-increment: window-counter;
+    position: relative;
+    left: 1rem;
+    width: calc(100% - 2rem);
+}
+
+.overlay-window-body ol li::before {
+    content: counter(window-counter) ". ";
+    position: absolute;
+    left: -2rem;
+    top: -1px;
+}
+
+.overlay-window-body ul li::before {
+    content: "" !important;
+}
+
+.overlay-window-body ul li::marker {
+    content: "- " !important;
+}
+
+.overlay-window-body h2 {
+    font-size: 1.5rem;
+}
+
+.overlay-window-body h3 {
+    font-size: 1.25rem;
+}
+
+.overlay-window-body small {
+    font-style: italic;
+}
+
+.overlay-window-body p {
+    text-align: justify;
+}
+
+.help-window h2, h3 {
+    position: relative;
+}
+
+.help-window h2 a, h3 a {
+    font-size: 0.875rem;
+    font-weight: 400;
+    font-style: italic;
+    position: absolute;
+    right: 2px;
+}
+
+.help-window a {
+    color: var(--schedule-color-primary);
+}
+
+.help-window a:hover {
+    color: var(--schedule-color-primary-third);
+}
+
+.element-name {
+    background-color: var(--schedule-color-lightgray);
+    padding: 1px;
+    padding-left: 5px;
+    padding-right: 5px;
+    border: 1px solid;
+    font-weight: 400;
 }
 
 .calendar {
@@ -640,6 +763,10 @@ a:hover {
     padding:0.5rem;
 }
 
+.sliding-menu li:nth-last-child(2) {
+    margin-top: 2rem;
+}
+
 .sliding-menu li:last-child {
     margin-top: 2rem;
 }
@@ -669,9 +796,92 @@ a:hover {
     color: var(--schedule-color-light);
 }
 
+.login-register a:hover {
+    color: var(--schedule-color-light) !important;
+}
+
 .login-register-mobile {
     background-color: var(--schedule-color-light);
     color: var(--schedule-color-gray-dark);
+}
+
+.login-register-mobile a {
+    color: var(--schedule-color-primary-light) !important;
+}
+
+.copyright {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 1rem;
+    font-size: 0.625rem;
+    padding-left: 0.25rem;
+}
+
+.contact::after {
+    content: "marcin.bogdanowicz@wp.eu";
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+}
+
+.vegetables {
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    font-size: 1rem;
+    position: relative
+}
+.vegetables::before {
+    content: "krzysiek@dyzurymedyczne.pl";
+    position: absolute;
+    left: 0;
+    color: rgba(26, 26, 26, 0.05);
+}
+.tomato {
+    display: inline !important;
+    display: none;
+}
+.leek {
+    display: inline;
+    display: none !important;
+}
+.lettuce {
+    display: inline;
+    display: none !important;
+}
+.salad {
+    display: inline !important;
+    display: none;
+}
+.carrot {
+    display: inline;
+    display: none !important;
+}
+.potato {
+    display: inline;
+    display: none !important;
+}
+.broccoli {
+    display: inline;
+    display: none !important;
+}
+.cauliflower {
+    display: inline;
+    display: none !important;
+}
+.cucumber {
+    display: inline !important;
+    display: none;
+}
+.celery {
+    display: inline;
+    display: none !important;
+}
+.salad {
+    display: inline !important;
+    display: none;
 }
 
 
@@ -707,14 +917,14 @@ a:hover {
         --schedule-tile-width: 30vw;
         --schedule-tile-height: 20vw;
         --schedule-logo-width: 100vw;
-        --schedule-logo-height: 12vh;
+        --schedule-logo-min-height: 6rem; 
         --fs-tile-add: 2rem;
         --fs-tile: 1rem;
     }
 
     .shrink-for-logo {
-        max-height: calc(100vh - var(--schedule-logo-height));
-        margin-top: var(--schedule-logo-height);
+        max-height: calc(100vh - var(--schedule-logo-min-height)) !important;
+        margin-top: var(--schedule-logo-min-height) !important;
     }
 
     .logo {
@@ -744,10 +954,10 @@ a:hover {
     }
 
     .right-col {
-        min-height: calc(100vh - var(--schedule-logo-height));
-        max-height: calc(100vh - var(--schedule-logo-height));
+        height: calc(100vh - var(--schedule-logo-min-height));
+        max-height: calc(100vh - var(--schedule-logo-min-height));
         position: fixed;
-        top: var(--schedule-logo-height);
+        top: var(--schedule-logo-min-height);
         left: 0;
         overflow: scroll;
     }
@@ -826,6 +1036,22 @@ a:hover {
         font-size: 0.875rem;
     }
 
+    .duty-calendar-tile.weekend-holiday {
+        background: linear-gradient(225deg, var(--schedule-color-light) 0%, var(--schedule-color-light) 4%, var(--schedule-color-primary) 4%);
+    }
+
+    .inactive.duty-calendar-tile.weekend-holiday {
+        background: linear-gradient(225deg, var(--schedule-color-light) 0%, var(--schedule-color-light) 4%, var(--schedule-color-gray) 4%);
+    }
+
+    .duty-calendar-tile.weekday-holiday {
+        background: linear-gradient(225deg, var(--schedule-color-primary) 0%, var(--schedule-color-primary) 4%, var(--schedule-color-light) 4%);
+    }
+
+    .inactive.duty-calendar-tile.weekday-holiday {
+        background: linear-gradient(225deg, var(--schedule-color-gray) 0%, var(--schedule-color-gray) 4%, var(--schedule-color-light) 4%);
+    }
+
     .duty-tile {
         height: 2.5rem;
     }
@@ -884,5 +1110,20 @@ a:hover {
 
     .my-offcanvas .stat-table thead th {
         writing-mode: vertical-lr;
+    }
+
+    .overlay-window {
+        width: 100vw;
+        min-height: 100vh;
+        max-height: 100vh;
+        padding: 1rem;
+    }
+    
+    .overlay-window-content {
+        width: 100%;
+        height: 90vh;
+        margin-top: 5vh;
+        margin-bottom: 5vh;
+        max-height: calc(100vh - 2rem);
     }
 }

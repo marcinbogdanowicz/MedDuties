@@ -359,7 +359,6 @@ class MonthlyDuties {
         for (const doctor of this.doctors) {
             const exceptions = doctor.getExceptions();
             const preferredDays = doctor.getPreferredDays();
-            //const preferredWeekdays = doctor.getPreferredWeekdays();
             const doctorsPreferredPositions = doctor.getPreferredPositions();
             const maxNumberOfDuties = doctor.getMaxNumberOfDuties();
 
@@ -368,14 +367,6 @@ class MonthlyDuties {
                     errors.add(`${doctor.name} jednocześnie wyklucza i ` +
                         `preferuje dyżur ${day}/${this.month}/${this.year}.`);
                 }
-                /** 
-                const weekday = this.getDay(day).weekday;
-                if (!preferredWeekdays.includes(weekday)) {
-                    errors.add(`${doctor.name} preferuje dyżur w dzień ${day}/` +
-                        `${this.month}/${this.year} - ${WEEKDAY_NAMES[weekday]}` +
-                        ` - jednocześnie wykluczając dyżury w ten dzień tygodnia.`);
-                }
-                */
             }
 
             // Check if doctor has more preferences then his duty number limit.
@@ -569,9 +560,9 @@ class MonthlyDuties {
 
     _assignAndPostCheck() {
         this._assignPreferredDuties();
-        this._assignDuties();
-
+        
         try {
+            this._assignDuties();
             this._checkForMissingDuties();
             this._checkForForbiddenDuties();
             return true;

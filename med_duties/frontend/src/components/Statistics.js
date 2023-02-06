@@ -198,7 +198,7 @@ export default function Statistics() {
 
     const rightCol = (
         <div className="tile-table">
-            <div className="bg-schedule-light pt-4">
+            <div className="bg-schedule-light pt-4" style={{"margin-right": "7.5vw"}}>
                 <div className="mb-4">
                     <h3><center>Statystyki oddziału</center></h3>
                     <h6><center>(średnio miesięcznie)</center></h6>

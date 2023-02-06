@@ -25,7 +25,7 @@ export default function ColumnLayout(props) {
 
     return (
         <Container fluid className="px-0 mx-0">
-            <Row className="g-0">
+            <Row className="g-0" style={{width: "100vw"}}>
                 <Col md={3} className="border-end">
                     <Logo primary={props.logoPrimary} secondary={props.logoSecondary} />
                     {

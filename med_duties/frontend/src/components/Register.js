@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import { Link, useNavigate } from 'react-router-dom';
@@ -6,23 +6,38 @@ import axiosInstance from '../axiosApi';
 import logUserIn from './logUserIn';
 import Alert from './Alert';
 import MenuRow from './MenuRow';
+import SitePolicy from './SitePolicy';
 
 
 export default function Register() {
     const navigate = useNavigate();
-    const [registerData, setRegisterData] = React.useState({
+    const [registerData, setRegisterData] = useState({
         username: "",
         password: "",
         passwordRepeat: "",
         email: "",
         unitName: "",
         dutyPositions: "",
+        iReadPolicy: false,
     });
-    const [errors, setErrors] = React.useState({});
+    const [errors, setErrors] = useState({});
+    const [showPolicy, setShowPolicy] = useState(false);
     const mobile = window.matchMedia("(max-width: 768px)").matches;
 
+    const hidePolicy = () => {
+        setShowPolicy(false);
+    }
+
+    const openPolicy = (e) => {
+        e.preventDefault();
+        setShowPolicy(true);
+    }
+
     const inputHandler = (event) => {
-        const { name, value } = event.target;
+        let { name, value } = event.target;
+        if (name === 'iReadPolicy') {
+            value = event.target.checked;
+        }
         setRegisterData((prevState) => ({
             ...prevState,
             [name]: value,
@@ -53,6 +68,9 @@ export default function Register() {
             newErrors.dutyPositions = "Proszę podać liczbę lekarzy na dyżur.";
         } else if (!acceptedDutyPositions.includes(parseInt(registerData.dutyPositions))) {
             newErrors.dutyPositions = "Obługiwany grafik dla 1 do 3 lekarzy na dyżur.";
+        }
+        if (!registerData.iReadPolicy) {
+            newErrors.iReadPolicy = "Zaakceptuj regulamin, by korzystać z serwisu."
         }
 
         // Prevent sending if form is filled incorrectly.
@@ -116,12 +134,16 @@ export default function Register() {
         }))
     }
 
+    const iReadPolicyLabel = (
+        <span>Zapoznałem się z <a href="" onClick={openPolicy}>Regulaminem strony</a> i akceptuję jego zapisy.</span>
+    );
+
     return (
         <MenuRow addedClass={mobile ? "login-register-mobile" : "login-register"}>
 
             <Form onSubmit={handleSubmit}>
 
-                <h2 className="mb-5">Rejestracja</h2>
+                <h2 className="mb-3">Rejestracja</h2>
                 
                 <Form.Label>Dane użytkownika</Form.Label>
 
@@ -199,13 +221,27 @@ export default function Register() {
                     }
                 </Form.Group>
 
+                <Form.Group className="mb-3">
+                    <Form.Check type="checkbox" id="read-policy" name="iReadPolicy" checked={registerData.iReadPolicy} onChange={inputHandler} label={iReadPolicyLabel} />
+                    {
+                        errors.iReadPolicy && 
+                            <Form.Text className="text-danger">
+                                {errors.iReadPolicy}
+                            </Form.Text>
+                    }
+                </Form.Group>
+
                 <Button className="mb-3" variant="primary" type="submit">Zarejestruj się</Button>
 
                 <p>Masz już konto? <Link to="/login/">Zaloguj się</Link>.</p>
-                
+
             </Form>
             { 
                 errors.general && <Alert dismiss={dismissAlert} variant="danger" header="Błąd" clickToClose>{errors.general}</Alert>
+            }
+            {
+                showPolicy &&
+                <SitePolicy show={true} hide={hidePolicy} />
             }
         </MenuRow>
     );

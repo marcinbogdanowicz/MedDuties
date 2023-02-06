@@ -3,8 +3,9 @@ import Offcanvas from 'react-bootstrap/Offcanvas';
 import { Link, useNavigate } from 'react-router-dom';
 import axiosInstance from '../axiosApi';
 import refreshTokenNotExpired from './refreshTokenNotExpired';
+import Contact from './Contact';
 
-export default function SlideMenu() {
+export default function SlideMenu(props) {
     const navigate = useNavigate();
     const [show, setShow] = useState(false);
 
@@ -27,6 +28,12 @@ export default function SlideMenu() {
             console.log(error)
         }
         handleClose();
+    }
+
+    const openWindow = (e, name) => {
+        e.preventDefault();
+        handleClose();
+        props.openWindow(name);
     }
 
     return (
@@ -54,10 +61,10 @@ export default function SlideMenu() {
                                     <Link to="/statistics/" onClick={handleClose}>STATYSTYKI</Link>
                                 </li>
                                 <li>
-                                    <Link to="/" onClick={handleClose}>USTAWIENIA</Link>
+                                    <a href="/" onClick={(e) => openWindow(e, 'Help')}>WSKAZÓWKI</a>
                                 </li>
                                 <li>
-                                    <a href="/" onClick={handleLogout}>WYLOGUJ <i className="bi bi-power"></i></a>
+                                    <a href="/" onClick={handleLogout} className="highlight-link">WYLOGUJ <i className="bi bi-power"></i></a>
                                 </li>
                             </React.Fragment>
                             :
@@ -70,8 +77,11 @@ export default function SlideMenu() {
                                 </li>
                             </React.Fragment>
                         }
-
+                        <li>
+                            <Contact />
+                        </li>
                     </ul>
+                    <div className="copyright">© Marcin Bogdanowicz 2023</div>
                 </Offcanvas.Body>
             </Offcanvas>
         </>

@@ -93,17 +93,13 @@ export default function DutyTile(props) {
         <Col md className={colClasses} >
             { doctorDiv }
             <div className="duty-tile-controls">
-                <WithTooltip message="Zmień lekarza">
-                    <Dropdown align={mobile ? "end" : "start"} drop={mobile ? "down" : "end"}>
-                        <Dropdown.Toggle as={customToggle} />
-                        <Dropdown.Menu as={customMenu} className="duty-tile-dropdown">
-                            {options}
-                        </Dropdown.Menu>
-                    </Dropdown>
-                </WithTooltip>
-                <WithTooltip message="Usuń z dyżuru">
-                    <div className="duty-tile-control control" onClick={() => setDoctorOnDuty(duty, null)}>✕</div>
-                </WithTooltip>
+                <Dropdown align={mobile ? "end" : "start"} drop={mobile ? "down" : "end"}>
+                    <Dropdown.Toggle as={customToggle} />
+                    <Dropdown.Menu as={customMenu} className="duty-tile-dropdown">
+                        {options}
+                    </Dropdown.Menu>
+                </Dropdown>
+                <div className="duty-tile-control control" onClick={() => setDoctorOnDuty(duty, null)}>✕</div>
             </div>
         </Col>
     );
