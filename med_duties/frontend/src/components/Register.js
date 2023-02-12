@@ -49,8 +49,8 @@ export default function Register() {
 
         // Check for invalid form fields.
         const newErrors = {};
-        if (registerData.password.length === 0) {
-            newErrors.password = "Proszę podać hasło."
+        if (registerData.password.length < 8) {
+            newErrors.password = "Hasło musi mieć co najmniej 8 znaków."
         } else if (registerData.password !== registerData.passwordRepeat) {
             newErrors.password = "Hasła muszą się zgadzać!";
         }
