@@ -41,7 +41,9 @@ export default function ColumnLayout(props) {
                     <div className={"left-col " + ((!mobile || showLeft) ? "" : "d-none")}>
                         {
                             (mobile && !alwaysShowLeftCol) &&
-                            <i className="bi bi-x-lg link fs-1 mt-2 ms-2" onClick={hideLeftCol}></i>
+                            <div>
+                                <i className="bi bi-x-lg link close-sign" onClick={hideLeftCol}></i>
+                            </div>
                         }
                         {props.leftCol}
                     </div>

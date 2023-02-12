@@ -77,7 +77,8 @@ export default function DutiesSetter() {
     });
     const [spinnerData, setSpinnerData] = useState({
         show: false,
-        content: []
+        messages: [],
+        content: null
     });
 
     // Init max number of duties.
@@ -243,16 +244,22 @@ export default function DutiesSetter() {
         // Save history.
         saveDutiesHistory();
 
-        showSpinner(
+        // Create worker.
+        const myWorker = new Worker(window.location.origin + "/static/frontend/public/worker.js");
+
+        // Show spinner.
+        const cancelButton = (
+            <button className="btn btn-danger" onClick={() => {myWorker.terminate(); hideSpinner();}}>Przerwij</button>
+        );
+        showSpinner([
             'Układam dyżury...', 
             'Negocjuję z lekarzami...', 
             'Oferuję podwyżki...', 
             'Zamieszczam ogłoszenia o pracy...', 
             'Ułożenie dyżurów może trwać nawet kilka minut.'
-        );
+        ], cancelButton);
 
-        // Create worker, which will automatically set duties.
-        const myWorker = new Worker("http://127.0.0.1:8000/static/frontend/public/worker.js");
+        // Send data to worker (it will trigger setting duties).
         const data = serializeAppData()
         myWorker.postMessage(data);
 
@@ -898,7 +905,7 @@ export default function DutiesSetter() {
 
     const saveSchedule = async () => {
         dismissAlerts();
-        showSpinner('Zapisywanie...', 'Jeszcze chwilę...');
+        showSpinner(['Zapisywanie...', 'Jeszcze chwilę...']);
         const month = appData.monthlyDuties.month;
         const year = appData.monthlyDuties.year;
         const data = serializeMonthlyDuties();
@@ -1070,10 +1077,11 @@ export default function DutiesSetter() {
         setAppData((prevState) => ({...prevState}));
     }
 
-    const showSpinner = (...content) => {
+    const showSpinner = (messages, content=null) => {
         setSpinnerData({
             show: true,
-            content: content
+            content: content,
+            messages: messages,
         });
     }
 
@@ -1244,7 +1252,7 @@ export default function DutiesSetter() {
                 </Alert> 
             }
             {
-                <OverlaySpinner show={spinnerData.show} content={spinnerData.content} />
+                <OverlaySpinner show={spinnerData.show} messages={spinnerData.messages} content={spinnerData.content} />
             }
         </Container>
     );

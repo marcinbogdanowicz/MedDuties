@@ -4,11 +4,12 @@ import Spinner from 'react-bootstrap/Spinner';
 export default function OverlaySpinner(props) {
     const show = props.show;
     const content = props.content;
+    const overlayMessages = props.messages;
     const [message, setMessage] = useState('');
     const timeout = useRef(null);
 
     useEffect(() => {
-        if (show && content && content.length) {
+        if (show && overlayMessages && overlayMessages.length) {
             const messages = getMessage();
             setMessage(messages.next().value);
             timeout.current = setInterval(() => {
@@ -23,7 +24,7 @@ export default function OverlaySpinner(props) {
     function* getMessage() {
         let i = 0;
         while (true) {
-            yield content[i % content.length];
+            yield overlayMessages[i % overlayMessages.length];
             i++;
         }
     }
@@ -38,7 +39,12 @@ export default function OverlaySpinner(props) {
                         { message }
                     </div>
                 }
-
+                {
+                    content &&
+                    <div>
+                        { content }
+                    </div>
+                }
             </div>
         );
     }    
