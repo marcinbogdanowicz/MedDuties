@@ -1,7 +1,7 @@
-import 'bootstrap/dist/css/bootstrap.css';
+import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap-icons/font/bootstrap-icons.css';
 import './styles.css';
-import React from 'react'
+import React, { lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client';
 import { 
     createBrowserRouter,
@@ -15,15 +15,18 @@ import dutySetterLoader from './components/dutySetterLoader';
 import doctorsLoader from './components/doctorsLoader';
 import statisticsLoader from './components/statisticsLoader';
 import ErrorPage from './components/ErrorPage';
-import Statistics from './components/Statistics';
-import Doctors from './components/Doctors';
-import DutySetter from './components/DutySetter';
-import Duties from './components/Duties';
 import Login from './components/Login';
 import Register from './components/Register';
 import Menu from './components/Menu';
 import Main from './components/Main';
 import App from './components/App';
+import OverlaySpinner from './components/OverlaySpinner';
+
+// Lazy load major views.
+const Duties = lazy(() => import(/* webpackChunkName: 'duties' */ './components/Duties'));
+const DutySetter = lazy(() => import(/* webpackChunkName: 'dutySetter' */ './components/DutySetter'));
+const Doctors = lazy(() => import(/* webpackChunkName: 'doctors' */ './components/Doctors'));
+const Statistics = lazy(() => import(/* webpackChunkName: 'statistics' */ './components/Statistics'));
 
 
 const router = createBrowserRouter([
@@ -86,8 +89,8 @@ const domContainer = document.getElementById('root');
 const root = createRoot(domContainer);
 root.render(
     <React.StrictMode>
-        <RouterProvider router={router} />
-    </React.StrictMode>      
+        <Suspense fallback={<OverlaySpinner message="Ładowanie strony..." />}>
+            <RouterProvider router={router} />
+        </Suspense>
+    </React.StrictMode>
 );
-
-//     <BrowserRouter>

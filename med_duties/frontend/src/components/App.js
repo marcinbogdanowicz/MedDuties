@@ -1,17 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, lazy } from 'react';
 import { Outlet } from 'react-router-dom';
 import SlideMenu from './SlideMenu';
-import Help from './Help';
+
+const Help = lazy(() => import(/* webpackChunkName: 'help' */ './Help'));
 
 
 export default function App() {
         const [show, setShow] = useState('');
-        const hide = () => setShow('');
+        const hide = () => setShow('');        
 
         return (
                 <div>
-                        <SlideMenu openWindow={setShow} />
-                        <Help hide={hide} show={show === 'Help'} />
+                        <SlideMenu openWindow={setShow} /> 
+                        {
+                                show === 'Help' &&
+                                <Help hide={hide} show={true} />
+                        }
                         <Outlet />
                 </div>
         );

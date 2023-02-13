@@ -5,7 +5,6 @@ import DutyTile from './DutyTile';
 import DutyTileInactive from './DutyTileInactive';
 import Day from './algorithm/Day';
 import Duty from './algorithm/Duty';
-import { getWeekday } from './algorithm/utils';
 
 var months = {
     1: 'Styczeń',
@@ -31,7 +30,7 @@ export default function Schedule(props) {
     const mobile = window.matchMedia("(max-width: 768px)").matches;
 
     const dayTiles = [];
-    if (appData.monthlyDuties.constructor.name === 'MonthlyDuties') {
+    if (appData.monthlyDuties.year) {
         const weekdays = ['Pon.', 'Wto.', 'Śro.', 'Czw.',
                           'Pią.', 'Sob.', 'Nie.'];
         const monthlyDuties = appData.monthlyDuties;
@@ -151,15 +150,6 @@ export default function Schedule(props) {
                 </Row>
             );
         }
-
-        /* Push prev month's name.
-        dayTiles.unshift(
-            <Row key={'2000'} className="border border-bottom-0 border-5 border-light">
-                <Col className="duty-tile-month inactive">
-                    <h2>{`${months[prevMonth]} ${prevYear}`}</h2>
-                </Col>
-            </Row>
-        );*/
 
         // Add next month's duties
         const nextDuties = monthlyDuties.getNextMonthDuties();

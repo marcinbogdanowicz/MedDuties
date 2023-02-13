@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, lazy } from 'react';
 import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import { Link, useNavigate } from 'react-router-dom';
@@ -6,7 +6,8 @@ import axiosInstance from '../axiosApi';
 import logUserIn from './logUserIn';
 import Alert from './Alert';
 import MenuRow from './MenuRow';
-import SitePolicy from './SitePolicy';
+
+const SitePolicy = lazy(() => import(/* webpackChunkName: 'sitePolicy' */ './SitePolicy'));
 
 
 export default function Register() {
