@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import Container from 'react-bootstrap/Container';
-import ToggleButtonGroup from 'react-bootstrap/ToggleButtonGroup';
-import ToggleButton from 'react-bootstrap/ToggleButton';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Logo from './Logo';
@@ -41,7 +39,9 @@ export default function ColumnLayout(props) {
                     <div className={"left-col " + ((!mobile || showLeft) ? "" : "d-none")}>
                         {
                             (mobile && !alwaysShowLeftCol) &&
-                            <i className="bi bi-x-lg link fs-1 mt-2 ms-2" onClick={hideLeftCol}></i>
+                            <div>
+                                <i className="bi bi-x-lg link close-sign" onClick={hideLeftCol}></i>
+                            </div>
                         }
                         {props.leftCol}
                     </div>

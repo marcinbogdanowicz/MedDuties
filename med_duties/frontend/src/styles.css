@@ -160,8 +160,8 @@ a.light-link:hover {
 }
 
 .left-col {
-    max-height: calc(100vh - 7rem);
     height: var(--schedule-left-col-height);
+    max-height: var(--schedule-left-col-max-height);
     overflow-y: scroll;
     padding: 0;
     margin: 0;
@@ -884,6 +884,14 @@ a.light-link:hover {
     display: none;
 }
 
+.close-sign {
+    position: absolute;
+    right: 0;
+    font-size: 1.75rem;
+    margin-right: 0.75rem;
+    margin-top: 0.5rem;
+}
+
 
 @media (min-width: 769px) and (max-width: 992px) { 
     :root {
@@ -928,6 +936,7 @@ a.light-link:hover {
     }
 
     .logo {
+        height: var(--schedule-logo-min-height);
         padding-left: 0px;
         position: fixed;
         top: 0;
@@ -940,10 +949,10 @@ a.light-link:hover {
     }
 
     .left-col {
-        min-height: calc(100vh - var(--schedule-logo-height));
-        max-height: calc(100vh - var(--schedule-logo-height));
+        height: calc(100vh - var(--schedule-logo-min-height));
+        max-height: calc(100vh - var(--schedule-logo-min-height));
         position: fixed;
-        top: var(--schedule-logo-height);
+        top: var(--schedule-logo-min-height);
         left: 0;
         overflow: scroll;
         width: 100%;

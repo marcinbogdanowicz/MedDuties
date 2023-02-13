@@ -39,6 +39,7 @@ export default function SlideMenu(props) {
     return (
         <>
             <div className='menu-trigger' onClick={toggleShow}>☰</div>
+            { show &&
             <Offcanvas show={show} onHide={handleClose} className="sliding-menu">
                 <Offcanvas.Header>
                     <Offcanvas.Title>Dyżury Medyczne</Offcanvas.Title>
@@ -84,6 +85,7 @@ export default function SlideMenu(props) {
                     <div className="copyright">© Marcin Bogdanowicz 2023</div>
                 </Offcanvas.Body>
             </Offcanvas>
+            }
         </>
     );
 }

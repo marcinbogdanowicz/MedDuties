@@ -508,7 +508,7 @@ export default function Duties() {
                         {alertData.message}
                     </Alert>
                 }
-            <OverlaySpinner show={spinnerData.show} content={spinnerData.content} />
+            <OverlaySpinner show={spinnerData.show} messages={spinnerData.content} />
         </div>
     );
 

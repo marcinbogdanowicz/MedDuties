@@ -2,7 +2,7 @@
   "name": "med-duties-app",
   "version": "1.0.0",
   "description": "MedDuties App",
-  "main": "index.js",
+  "private": true,
   "scripts": {
     "build": "webpack --config webpack.config.js && python3 med_duties/manage.py runserver",
     "test": "jest --verbose"
@@ -20,6 +20,7 @@
     "fs": "^0.0.1-security",
     "jest": "^29.3.1",
     "less-loader": "^11.1.0",
+    "mini-css-extract-plugin": "^2.7.2",
     "selenium-webdriver": "^4.6.1",
     "style-loader": "^3.3.1",
     "webpack": "^5.74.0",

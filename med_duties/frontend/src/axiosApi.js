@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const baseURL = 'http://127.0.0.1:8000/api';
+const baseURL = window.location.origin + '/api';
 
 const axiosInstance = axios.create({
     baseURL: baseURL,
@@ -31,6 +31,9 @@ axiosInstance.interceptors.response.use(
         else if (error.response.status === 401
                 && error.response.statusText === 'Unauthorized'
                 && originalRequest.url === '/token/refresh/') {
+            // Removing both tokens will force user to log in again.
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
             return Promise.reject(error);
         }
 
