@@ -125,7 +125,7 @@ export default function Help(props) {
                 </li>
                 <li>
                     <p>
-                        Aby układać, zmieniać i usuwać pojedyńcze dyżury, użyj przycisków <span className="element-name">✎</span> i <span className="element-name">✕</span>. Możesz ułożyć tylko kilka,
+                        Aby układać, zmieniać i usuwać pojedyńcze dyżury, użyj przycisków <span className="element-name"><i className="bi bi-person-fill-add"></i></span> i <span className="element-name"><i className="bi bi-x-lg"></i></span>. Możesz ułożyć tylko kilka,
                         istotnych dla Ciebie dyżurów - gdy naciśniesz Ułóż grafik, <b>program zaproponuje pozostałe, nie zmieniając
                         dyżurów użytkownika</b>.
                     </p>
@@ -455,16 +455,16 @@ export default function Help(props) {
                 <li>
                     <p><b>Ręczne układanie dyżurów</b></p>
                     <p>
-                        Klikając ikonę ołówka <span className="element-name">✎</span> na każdej pozycji dyżurowej 
+                        Klikając ikonę <span className="element-name"><i className="bi bi-person-fill-add"></i></span> na każdej pozycji dyżurowej 
                         możesz obsadzić dyżur, lub zmienić dyżuranta.
-                        Po kliknięciu <span className="element-name">✎</span> rozwinie się <b>lista osób, które mogą wziąć dyżur</b> tego
+                        Po kliknięciu <span className="element-name"><i className="bi bi-person-fill-add"></i></span> rozwinie się <b>lista osób, które mogą wziąć dyżur</b> tego
                         dnia na tej pozycji, zgodnie ze swoimi preferencjami i ułożonymi dyżurami
                         (nie pokażą się osoby obsadzone w sąsiednie dni oraz te, które wyczerpały
                         maksymalną liczbę dyżurów). Dopisek (zam.) oznacza, że wybranie lekarza 
                         usunie go z innej pozycji tego samego dnia.
                     </p>
                     <p>
-                        Klikając <span className="element-name">✕</span> możesz opróżnić dyżur na danej pozycji.
+                        Klikając <span className="element-name"><i className="bi bi-x-lg"></i></span> możesz opróżnić dyżur na danej pozycji.
                     </p>
                     <p>
                         <b>Wskazówka</b><br/>

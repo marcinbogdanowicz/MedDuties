@@ -10,6 +10,7 @@ export default function DoctorPreferencesForm(props) {
     const month = props.month;
     const updateDoctor = props.updateDoctor;
     const removeDoctor = props.removeDoctor;
+    const pendingDecision = props.pendingDecision;
     const daysInMonth = new Date(year, month, 0).getDate();
     const maximumDuties = Math.floor(new Date(year, month, 0).getDate() / 2);
 
@@ -118,16 +119,23 @@ export default function DoctorPreferencesForm(props) {
         const updatedDoctor = updateDoctor(data);
 
         if (updatedDoctor) {
-            setMessages({success: 'Zapisano.'});
+            setTimeoutMessage('saveResult','Zapisano!');
             doctor = updatedDoctor;
         } else {
-            setMessages({success: 'Nie zapisano.'});
+            setTimeoutMessage('saveResult', 'Nie zapisano!');
         }
     }
 
     const removeHandler = (e) => {
         e.preventDefault();
         removeDoctor(doctor.pk);
+    }
+
+    const setTimeoutMessage = (type, message, timeout=2000) => {
+        setMessages({[type]: message});
+        setTimeout(() => {
+            setMessages({});
+        }, timeout);
     }
 
     const positionChecks = doctorData.preferredPositions.map((position, index) => {
@@ -138,8 +146,7 @@ export default function DoctorPreferencesForm(props) {
         <div>
             <Form onSubmit={submitHandler}>
                 <Form.Group className="mb-3">
-                    <Form.Control type="submit" value="Zapisz ustawienia" className='btn btn-primary' />
-                    { messages.success && <Form.Text>{messages.success}</Form.Text> }
+                    <Form.Control type="submit" value={messages.saveResult || "Zapisz ustawienia"} className='btn btn-primary' disabled={messages.saveResult} />
                 </Form.Group>
                 <Form.Group className="mb-3">
                     <Form.Label>
@@ -187,7 +194,7 @@ export default function DoctorPreferencesForm(props) {
                 <hr />
                 <Form.Group>
                     <WithTooltip message='Lekarza możesz dodać z powrotem w zakładce "Dodaj lekarza" na dole strony.'>
-                        <Form.Control type="submit" value="Usuń z grafiku" className='btn btn-light border' onClick={removeHandler} />
+                        <Form.Control type="submit" value={pendingDecision.removeDoctor === doctor.pk ? "Potwierdź..." : "Usuń z grafiku"} className='btn btn-light border' onClick={removeHandler} disabled={pendingDecision.removeDoctor === doctor.pk} />
                     </WithTooltip>
                 </Form.Group>
             </Form>

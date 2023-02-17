@@ -33,6 +33,8 @@ export default function Doctors() {
         message: '',
         header: ''
     });
+    const [message, setMessage] = useState({});
+    const [pendingDecision, setPendingDecision] = useState({});
 
     useEffect(() => {
         const d = doctorsData;
@@ -186,13 +188,14 @@ export default function Doctors() {
     }
 
     const removeDoctor = () => {
+        setPendingDecision({'remove': true});
         const message = (
             <div>
                 <p>Próbujesz <strong>usunąć lekarza { doctorDetail.name }</strong>.<br />
                 Spowoduje to <strong>usunięcie wszystkich dyżurów i ustawień</strong> 
                 tego lekarza z wszystkich grafików, także już ułożonych.<br />
                 Czy chcesz kontynuować?</p>
-                <div>
+                <div className="alert-buttons">
                     <button 
                         className='btn btn-warning'
                         onClick={_remove}
@@ -200,7 +203,7 @@ export default function Doctors() {
                         Usuń
                     </button>
                     <button 
-                        className='btn btn-success ms-4' 
+                        className='btn btn-success'
                         onClick={closeAlert}
                     >
                         Anuluj
@@ -274,9 +277,7 @@ export default function Doctors() {
             // Add doctor to state.
             const newDoctors = [...doctors, doctor];
             setDoctors(newDoctors);
-            setDoctorDetail(doctor);
-            setShow('doctorDetail');
-
+            setTimeoutMessage('createDoctor', `Dodano: ${name}`, 1500);
         } catch (error) {
             console.log(error);
             setAlertData({
@@ -285,6 +286,7 @@ export default function Doctors() {
                     "Baza danych nie została zaktualizowana."),
                 header: 'Błąd!'
             });
+            setTimeoutMessage('createDoctor', 'Nie dodano!');
         }
     }
 
@@ -293,6 +295,14 @@ export default function Doctors() {
             ...prevState,
             show: false
         }));
+        setPendingDecision({});
+    }
+
+    const setTimeoutMessage = (type, message, timeout=2000) => {
+        setMessage({[type]: message});
+        setTimeout(() => {
+            setMessage({});
+        }, timeout);
     }
 
     const table = (
@@ -420,8 +430,9 @@ export default function Doctors() {
                                 <button 
                                     onClick={removeDoctor}
                                     className="btn btn-light border mb-3 w-45"
+                                    disabled={pendingDecision.remove}
                                 >
-                                    Usuń
+                                    { pendingDecision.remove ? "Potw..." : "Usuń" }
                                 </button>
                             </div>
                         </React.Fragment>
@@ -432,6 +443,8 @@ export default function Doctors() {
                             <h5>Nowy lekarz</h5>
                             <DoctorDataForm 
                                 handleData={createDoctor}
+                                buttonValue={message.createDoctor || "Dodaj"}
+                                disableButton={message.createDoctor || false}
                             />
                         </div>
                     }
@@ -442,31 +455,36 @@ export default function Doctors() {
                             <h5>Nowe dane</h5>
                             <DoctorDataForm 
                                 handleData={editDoctor}
+                                buttonValue="Zmień"
                             />
                         </div>
-                    }
-                    {
-                        alertData.show &&
-                        <Alert 
-                            header={alertData.header}
-                            variant="warning"
-                            dismiss={closeAlert}
-                            clickToClose
-                        >
-                            {alertData.message}
-                        </Alert>
                     }
                 </div>
             </div>
         </div>
     );
 
-    return <ColumnLayout 
-        leftCol={leftCol} 
-        rightCol={rightCol} 
-        logoPrimary={unit.name} 
-        logoSecondary={"Lekarze"}
-        showLeftCol={show}
-        setShowLeftCol={setShow}
-    />
+    return (
+        <div>
+            <ColumnLayout 
+                leftCol={leftCol} 
+                rightCol={rightCol} 
+                logoPrimary={unit.name} 
+                logoSecondary={"Lekarze"}
+                showLeftCol={show}
+                setShowLeftCol={setShow}
+            />
+            {
+                alertData.show &&
+                <Alert 
+                    header={alertData.header}
+                    variant="warning"
+                    dismiss={closeAlert}
+                    clickToClose
+                >
+                    {alertData.message}
+                </Alert>
+            }
+        </div>
+    );
 }

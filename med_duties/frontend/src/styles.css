@@ -23,6 +23,7 @@
     --schedule-duty-view-min-height: 88vh;
     --schedule-duty-menu-height: 10vw;
     --schedule-duty-menu-max-height: 12vh;
+    --schedule-tile-table-padding: 7.5vw;
 }
 
 a {
@@ -51,9 +52,9 @@ a.light-link:hover {
 }
 
 .tile-table {
-    padding-top: 7.5vw;
-    padding-bottom: 7.5vw;
-    padding-left: 7.5vw;
+    padding-top: var(--schedule-tile-table-padding);
+    padding-bottom: var(--schedule-tile-table-padding);
+    padding-left: var(--schedule-tile-table-padding);
     background-color: var(--schedule-color-lightgray);
     min-height: 100vh;
 }
@@ -367,7 +368,6 @@ a.light-link:hover {
 }
 
 .duty-tile-control.control:hover {
-    font-size: 1.75rem;
     padding: 0.75rem;
     color: var(--schedule-color-primary);
     background-color: var(--schedule-color-dimlight);
@@ -497,6 +497,13 @@ a.light-link:hover {
     text-align: right;
 }
 
+.stat-table > tbody > tr > th {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    max-width: 10vw;
+}
+
 .link {
     cursor: pointer;
 }
@@ -518,6 +525,16 @@ a.light-link:hover {
     width: 40vw;
     min-width: 300px;
     max-width: 90vw;
+}
+
+.alert-buttons {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.alert-buttons button {
+    min-width: 25%;
 }
 
 .no-select {
@@ -814,8 +831,8 @@ a.light-link:hover {
     left: 0;
     bottom: 0;
     width: 100%;
-    height: 1rem;
-    font-size: 0.625rem;
+    height: 1.5rem;
+    font-size: 0.875rem;
     padding-left: 0.25rem;
 }
 
@@ -925,7 +942,11 @@ a.light-link:hover {
         --schedule-tile-width: 30vw;
         --schedule-tile-height: 20vw;
         --schedule-logo-width: 100vw;
-        --schedule-logo-min-height: 6rem; 
+        --schedule-logo-min-height: 6rem;
+        --schedule-tile-table-padding: 5vw;
+        --schedule-duty-menu-height: 12vh;
+        --schedule-duty-view-height: calc(100vh - var(--schedule-duty-menu-height) - var(--schedule-logo-min-height));
+        --schedule-duty-view-min-height: calc(100vh - var(--schedule-duty-menu-height) - var(--schedule-logo-min-height));
         --fs-tile-add: 2rem;
         --fs-tile: 1rem;
     }
@@ -963,6 +984,7 @@ a.light-link:hover {
     }
 
     .right-col {
+        min-height: calc(100vh - var(--schedule-logo-min-height));
         height: calc(100vh - var(--schedule-logo-min-height));
         max-height: calc(100vh - var(--schedule-logo-min-height));
         position: fixed;
@@ -992,8 +1014,10 @@ a.light-link:hover {
     }
 
     .tile-table {
-        padding: 5vw;
-        min-height: none;
+        padding-top: var(--schedule-tile-table-padding);
+        padding-left: var(--schedule-tile-table-padding);
+        padding-bottom: var(--schedule-tile-table-padding);
+        min-height: calc(100vh - var(--schedule-logo-min-height));;
     }
 
     .schedule-tile-normal {
@@ -1091,7 +1115,6 @@ a.light-link:hover {
     }
 
     .duty-menu {
-        height: 12vh;
         position: fixed;
         bottom: 0;
         left: 0;
@@ -1115,6 +1138,8 @@ a.light-link:hover {
     .my-offcanvas {
         height: 50vh;
         width: 100vw;
+        padding-left: 1em;
+        padding-right: 1em;
     }
 
     .my-offcanvas .stat-table thead th {
@@ -1134,5 +1159,39 @@ a.light-link:hover {
         margin-top: 5vh;
         margin-bottom: 5vh;
         max-height: calc(100vh - 2rem);
+    }
+
+    .table-sm > :not(caption) > * > * {
+        padding: 0.1rem 0.35rem !important;
+    }
+
+    .stat-table td {
+        text-align: center;
+    }
+
+    .stat-table > tbody > tr > th {
+        max-width: 25vw;
+    }
+
+    .alert-custom {
+        top: 15vh;
+        width: 90vw;
+    }
+
+    .alert-custom .alert-message {
+        max-height: 55vh;
+        overflow: scroll;
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+        padding: 0.5rem;
+    }
+
+    .alert-buttons {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .alert-buttons button {
+        margin-bottom: 0.5rem;
     }
 }

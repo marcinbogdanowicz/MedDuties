@@ -23,7 +23,9 @@ export default function Alert(props) {
                 <BootstrapAlert className="position-fixed start-50 translate-middle-x border pointer alert-custom"
                     key={'info'} variant={variant} onClick={handleClose} dismissible>
                     <BootstrapAlert.Heading>{header}</BootstrapAlert.Heading>
-                    {props.children}
+                    <div className="alert-message">
+                        {props.children}
+                    </div>
                     <hr />
                     <small>Kliknij, by zamknąć.</small>
                 </BootstrapAlert>

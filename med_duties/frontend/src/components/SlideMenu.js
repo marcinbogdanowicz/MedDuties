@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import axiosInstance from '../axiosApi';
 import refreshTokenNotExpired from './refreshTokenNotExpired';
 import Contact from './Contact';
+import { version } from '../version';
 
 export default function SlideMenu(props) {
     const navigate = useNavigate();
@@ -42,7 +43,10 @@ export default function SlideMenu(props) {
             { show &&
             <Offcanvas show={show} onHide={handleClose} className="sliding-menu">
                 <Offcanvas.Header>
-                    <Offcanvas.Title>Dyżury Medyczne</Offcanvas.Title>
+                    <Offcanvas.Title>
+                        Dyżury Medyczne 
+                        <div className="fs-6">{ `v.${version}` }</div>
+                    </Offcanvas.Title>
                 </Offcanvas.Header>
                 <Offcanvas.Body>
                     <ul>
