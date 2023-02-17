@@ -27,7 +27,7 @@ export default function ScheduleMenuButton(props) {
         }
 
         return (
-            <span onClick={onclick} className={"link bg-" + variant + " " + textColor + " " + classes}>
+            <span onClick={onclick} className={"link bg-" + variant + " " + textColor + " " + classes} style={{minWidth: "50px", textAlign: "center"}}>
                 { label }
             </span>
         )

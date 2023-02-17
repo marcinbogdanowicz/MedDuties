@@ -5,6 +5,7 @@
   "private": true,
   "scripts": {
     "build": "webpack --config webpack.config.js && python3 med_duties/manage.py runserver",
+    "build-prod": "webpack --config webpack.config.prod.js",
     "test": "jest --verbose"
   },
   "author": "MB",

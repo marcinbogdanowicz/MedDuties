@@ -80,6 +80,7 @@ export default function DutiesSetter() {
         messages: [],
         content: null
     });
+    const [pendingDecision, setPendingDecision] = useState({});
 
     // Init max number of duties.
     const maximumDuties = useRef(15);
@@ -778,6 +779,7 @@ export default function DutiesSetter() {
     }
 
     const removeDoctor = (pk) => {
+        setPendingDecision({removeDoctor: pk});
         const header = "Usuwasz lekarza z grafiku";
         const variant = "warning";
         const content = (
@@ -790,7 +792,7 @@ export default function DutiesSetter() {
                 w czasie obecnej sesji</strong> - po zamknięciu lub odświeżeniu strony
                 zostaną utracone. Odzyskane dyżury będą widoczne po cofnięciu historii o 1.<br/><br/>
                 Czy chcesz kontynuować?</p>
-                <div>
+                <div className="alert-buttons">
                     <button 
                         className='btn btn-warning'
                         onClick={() => _remove(pk)}
@@ -798,7 +800,7 @@ export default function DutiesSetter() {
                         Usuń
                     </button>
                     <button 
-                        className='btn btn-success ms-4' 
+                        className='btn btn-success' 
                         onClick={dismissAlerts}
                     >
                         Anuluj
@@ -928,13 +930,14 @@ export default function DutiesSetter() {
     }
 
     const clearDuties = () => {
+        setPendingDecision({clearDuties: true});
         const header = "Usuwanie grafiku"
         const variant = 'warning';
         const removeContent = (
             <div>
                 <p>Możesz usunąć jedynie <strong>dyżury ułożone przez program</strong>, albo wszystkie,
                 czyli także <strong>ułożone przez użytkownika.</strong></p>
-                <div>
+                <div className="alert-buttons">
                     <button 
                         className='btn btn-warning'
                         onClick={() => _clear()}
@@ -942,13 +945,13 @@ export default function DutiesSetter() {
                         Usuń
                     </button>
                     <button 
-                        className='btn btn-danger ms-4'
+                        className='btn btn-danger'
                         onClick={() => _clear(true)}
                     >
                         Usuń wszytko
                     </button>
                     <button 
-                        className='btn btn-success ms-4' 
+                        className='btn btn-success' 
                         onClick={dismissAlerts}
                     >
                         Anuluj
@@ -961,7 +964,7 @@ export default function DutiesSetter() {
                 <p>Przycisk "wyczyść" powoduje <strong>usunięcie z grafiku 
                 ułożonych dyżurów.</strong><br/>
                 Czy chcesz kontynuować?</p>
-                <div>
+                <div className="alert-buttons">
                     <button 
                         className='btn btn-warning'
                         onClick={() => showAlert(removeContent, header, variant)}
@@ -969,7 +972,7 @@ export default function DutiesSetter() {
                         Kontynuuj
                     </button>
                     <button 
-                        className='btn btn-success ms-4' 
+                        className='btn btn-success' 
                         onClick={dismissAlerts}
                     >
                         Anuluj
@@ -1064,13 +1067,7 @@ export default function DutiesSetter() {
             ...prevState,
             show: false
         }));
-    }
-
-    const hideModal = () => {
-        setModalData((prevState) => ({
-            ...prevState,
-            show: false
-        }));
+        setPendingDecision({});
     }
 
     const refreshState = () => {
@@ -1108,6 +1105,7 @@ export default function DutiesSetter() {
                         month={appData.monthlyDuties.month} 
                         updateDoctor={updateDoctor} 
                         removeDoctor={removeDoctor}
+                        pendingDecision={pendingDecision}
                     />
                 </Accordion.Body>
             </Accordion.Item>
@@ -1148,7 +1146,7 @@ export default function DutiesSetter() {
     );
 
     const rightCol = (
-        <Container fluid className="vh-100">
+        <div>
             <Schedule 
                 appData={appData} 
                 highlight={highlight} 
@@ -1201,8 +1199,9 @@ export default function DutiesSetter() {
                         variant="light"
                         tooltip="Usuwa dyżury z grafiku"
                         onClick={clearDuties}
+                        disabled={pendingDecision.clearDuties}
                     >
-                        Wyczyść
+                        { pendingDecision.clearDuties ? "Potwierdź..." : "Wyczyść" }
                     </ScheduleMenuButton>
                     <ScheduleMenuButton
                         className="border"
@@ -1240,7 +1239,19 @@ export default function DutiesSetter() {
                     </ScheduleMenuButton>
                 </Col>
             </Row>
-            { 
+        </div>
+    );
+
+    return (
+        <div>
+            <ColumnLayout 
+                leftCol={leftCol} 
+                rightCol={rightCol} 
+                logoPrimary={appData.unit.name} 
+                logoSecondary={`${months[appData.monthlyDuties.month]} ${appData.monthlyDuties.year}`}
+                alwaysShowLeftCol
+            />
+            {
                 alertData.show && 
                 <Alert 
                     variant={alertData.variant} 
@@ -1254,14 +1265,6 @@ export default function DutiesSetter() {
             {
                 <OverlaySpinner show={spinnerData.show} messages={spinnerData.messages} content={spinnerData.content} />
             }
-        </Container>
-    );
-
-    return <ColumnLayout 
-                leftCol={leftCol} 
-                rightCol={rightCol} 
-                logoPrimary={appData.unit.name} 
-                logoSecondary={`${months[appData.monthlyDuties.month]} ${appData.monthlyDuties.year}`}
-                alwaysShowLeftCol
-            />;
+        </div>
+    )
 }

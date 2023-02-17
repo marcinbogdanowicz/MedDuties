@@ -4,6 +4,8 @@ import Form from 'react-bootstrap/Form';
 export default function DoctorDataForm(props) {
     const [name, setName] = useState('');
     const handleData = props.handleData;
+    const buttonValue = props.buttonValue;
+    const disableButton = props.disableButton;
 
     const handleChange = (event) => {
         setName(event.target.value);
@@ -12,6 +14,7 @@ export default function DoctorDataForm(props) {
     const handleSubmit = (event) => {
         event.preventDefault();
         handleData(name);
+        setName('');
     }
     return (
         <div>
@@ -21,7 +24,7 @@ export default function DoctorDataForm(props) {
                     <Form.Control type="text" name="name" value={name} onChange={handleChange}/>
                 </Form.Group>
                 <Form.Group>
-                    <button type="submit" className="btn btn-primary">Wyślij</button>
+                    <button type="submit" className="btn btn-primary" disabled={disableButton}>{ buttonValue }</button>
                 </Form.Group>
             </Form>
         </div>
