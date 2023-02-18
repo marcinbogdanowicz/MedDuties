@@ -909,6 +909,20 @@ a.light-link:hover {
     margin-top: 0.5rem;
 }
 
+.cookie-alert {
+    width: 90vw;
+    bottom: 3rem;
+    padding: 1rem;
+    background-color: var(--schedule-color-light);
+    border: var(--schedule-color-gray-dark) 0.15rem solid;
+    font-size: min(1rem, 14px);
+}
+
+.cookie-alert button {
+    width: 100%;
+    max-width: 25vw;
+}
+
 
 @media (min-width: 769px) and (max-width: 992px) { 
     :root {
@@ -1197,5 +1211,12 @@ a.light-link:hover {
 
     .alert-buttons button {
         margin-bottom: 0.5rem;
+    }
+
+    .cookie-alert {
+        bottom: 2.5rem;
+        background-color: white;
+        border: var(--schedule-color-gray-dark) 0.1rem solid;
+        line-height: 1.15;
     }
 }
