@@ -1,6 +1,7 @@
 import React, { useState, lazy } from 'react';
 import { Outlet } from 'react-router-dom';
 import SlideMenu from './SlideMenu';
+import CookieAlert from './CookieAlert';
 
 const Help = lazy(() => import(/* webpackChunkName: 'help' */ './Help'));
 
@@ -17,6 +18,7 @@ export default function App() {
                                 <Help hide={hide} show={true} />
                         }
                         <Outlet />
+                        <CookieAlert />
                 </div>
         );
 

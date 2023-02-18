@@ -22,8 +22,7 @@ axiosInstance.interceptors.response.use(
         if (error.response.status === 401
             && error.response.statusText === 'Unauthorized'
             && originalRequest.url === '/token/obtain/') {
-                const error = new Error("Niepoprawne dane logowania.")
-                return Promise.reject(error);
+                return Promise.reject(error.response);
             }
         /* ---- Handle token expired errors ---- */
 
@@ -34,7 +33,7 @@ axiosInstance.interceptors.response.use(
             // Removing both tokens will force user to log in again.
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
-            return Promise.reject(error);
+            return Promise.reject(error.response);
         }
 
         // Obtained new token if request was of any other kind.
@@ -45,7 +44,7 @@ axiosInstance.interceptors.response.use(
             const refreshToken = localStorage.getItem('refresh_token');
             if (!refreshToken) {
                 const error = new Error("Refresh token not available");
-                return Promise.reject(error);
+                return Promise.reject(error.response);
             }
 
             // Check if refresh token has expired.
@@ -54,7 +53,7 @@ axiosInstance.interceptors.response.use(
             const now = Math.ceil(Date.now() / 1000);
             if (tokenParts.exp <= now) {
                 const error = "Refresh token expired";
-                return Promise.reject(error);
+                return Promise.reject(error.response);
             }
 
             // Refresh tokens.
@@ -70,16 +69,16 @@ axiosInstance.interceptors.response.use(
                     return await axiosInstance(originalRequest);
                     
                 } catch (error) {
-                    return Promise.reject(error);
+                    return Promise.reject(error.response);
                 }
 
             } catch(error) {
-                return Promise.reject(error);
+                return Promise.reject(error.response);
             }
         }
         // Return other errors to be handled elsewhere.
         else {
-            return Promise.reject(error);
+            return Promise.reject(error.response);
         }
     }
 )
