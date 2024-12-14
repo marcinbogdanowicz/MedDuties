@@ -65,6 +65,7 @@ export default function Duties() {
     });
 
     useEffect(() => {
+        if (!schedulesData) { return; }
         const s = schedulesData.map(data => {
             if (data.monthandyear) {
                 const [month, year] = JSON.parse(data.monthandyear);
