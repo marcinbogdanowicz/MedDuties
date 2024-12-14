@@ -4,7 +4,7 @@
   "description": "MedDuties App",
   "main": "index.js",
   "scripts": {
-    "build": "webpack --config webpack.config.js && python3 med_duties/manage.py runserver",
+    "build": "webpack --config webpack.config.js",
     "test": "jest --verbose"
   },
   "author": "MB",

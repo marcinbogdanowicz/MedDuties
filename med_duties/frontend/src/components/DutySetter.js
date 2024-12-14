@@ -252,7 +252,7 @@ export default function DutiesSetter() {
         );
 
         // Create worker, which will automatically set duties.
-        const myWorker = new Worker("http://127.0.0.1:8000/static/frontend/public/worker.js");
+        const myWorker = new Worker(window.location.origin + "/static/frontend/public/worker.js");
         const data = serializeAppData()
         myWorker.postMessage(data);
 
