@@ -3,11 +3,11 @@ const path = require('path');
 module.exports = {
     mode: 'development',
     entry: {
-        main: ['babel-polyfill', path.resolve(__dirname, 'med_duties/frontend/src/index.js')],
-        worker: ['babel-polyfill', path.resolve(__dirname, 'med_duties/frontend/src/worker.js')]
+        main: ['babel-polyfill', path.resolve(__dirname, 'frontend/index.js')],
+        worker: ['babel-polyfill', path.resolve(__dirname, 'frontend/worker.js')]
     },
     output: {
-        path: path.resolve(__dirname, "med_duties/frontend/static/frontend/public/"),
+        path: path.resolve(__dirname, "backend/apps/frontend/static/frontend/public/"),
         publicPath: "http://127.0.0.1:8000/static/frontend/public/",
         filename: '[name].js',
         chunkFilename: '[name].[contenthash].js',
