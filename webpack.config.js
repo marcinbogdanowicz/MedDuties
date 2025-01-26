@@ -4,15 +4,15 @@ module.exports = {
     // set mode to 'production' for prod files; see publicPath also
     mode: "development", 
     entry: {
-        main: ['babel-polyfill', path.resolve(__dirname, 'med_duties/frontend/src/index.js')],
-        worker: ['babel-polyfill', path.resolve(__dirname, 'med_duties/frontend/src/worker.js')]
+        main: ['babel-polyfill', path.resolve(__dirname, 'frontend/index.js')],
+        worker: ['babel-polyfill', path.resolve(__dirname, 'frontend/worker.js')]
     },
     output: {
         // options related to how webpack emits results
 
         // where compiled files go
         path: path.resolve(__dirname, 
-            "med_duties/frontend/static/frontend/public/"),
+            "backend/frontend/static/frontend/public/"),
         
         // 127.0.0.1/static/frontend/public/ where files 
         // are served from (can be changed for production)
