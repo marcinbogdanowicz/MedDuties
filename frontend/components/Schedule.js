@@ -5,7 +5,6 @@ import DutyTile from './DutyTile';
 import DutyTileInactive from './DutyTileInactive';
 import Day from './algorithm/Day';
 import Duty from './algorithm/Duty';
-import { getWeekday } from './algorithm/utils';
 
 var months = {
     1: 'Styczeń',
@@ -31,7 +30,7 @@ export default function Schedule(props) {
     const mobile = window.matchMedia("(max-width: 768px)").matches;
 
     const dayTiles = [];
-    if (appData.monthlyDuties.constructor.name === 'MonthlyDuties') {
+    if (appData.monthlyDuties.year) {
         const weekdays = ['Pon.', 'Wto.', 'Śro.', 'Czw.',
                           'Pią.', 'Sob.', 'Nie.'];
         const monthlyDuties = appData.monthlyDuties;
@@ -77,7 +76,7 @@ export default function Schedule(props) {
             );
             // Push row to tiles array.
             dayTiles.push(
-                <Row key={i} className="border border-bottom-0 border-5 border-light">
+                <Row key={i} className="border border-bottom-0 border-5 border-light mx-0">
                     {rowContent}
                 </Row>
             );
@@ -85,7 +84,7 @@ export default function Schedule(props) {
 
         // Push current month's name.
         dayTiles.unshift(
-            <Row key={'1000'} className="border border-bottom-0 border-5 border-light">
+            <Row key={'1000'} className="border border-bottom-0 border-5 border-light mx-0">
                 <Col className="duty-tile-month">
                     <h2>{`${months[month]} ${year}`}</h2>
                 </Col>
@@ -146,20 +145,11 @@ export default function Schedule(props) {
         for (let i = prevMonthLen; i > prevMonthLen-7; i--) {
             const rowContent = createRow(prevYear, prevMonth, i, prevDuties);
             dayTiles.unshift(
-                <Row key={`prev-${i}`} className="border border-bottom-0 border-5 border-light">
+                <Row key={`prev-${i}`} className="border border-bottom-0 border-5 border-light mx-0">
                     {rowContent}
                 </Row>
             );
         }
-
-        /* Push prev month's name.
-        dayTiles.unshift(
-            <Row key={'2000'} className="border border-bottom-0 border-5 border-light">
-                <Col className="duty-tile-month inactive">
-                    <h2>{`${months[prevMonth]} ${prevYear}`}</h2>
-                </Col>
-            </Row>
-        );*/
 
         // Add next month's duties
         const nextDuties = monthlyDuties.getNextMonthDuties();
@@ -168,7 +158,7 @@ export default function Schedule(props) {
 
         // Push next month's name.
         dayTiles.push(
-            <Row key={'3000'} className="border border-bottom-0 border-5 border-light">
+            <Row key={'3000'} className="border border-bottom-0 border-5 border-light mx-0">
                 <Col className="duty-tile-month inactive">
                     <h2>{`${months[nextMonth]} ${nextYear}`}</h2>
                 </Col>
@@ -178,7 +168,7 @@ export default function Schedule(props) {
         for (let i = 1; i < 8; i++) {
             const rowContent = createRow(nextYear, nextMonth, i, nextDuties);
             dayTiles.push(
-                <Row key={`prev-${i}`} className="border border-bottom-0 border-5 border-light">
+                <Row key={`prev-${i}`} className="border border-bottom-0 border-5 border-light mx-0">
                     {rowContent}
                 </Row>
             );
@@ -186,8 +176,8 @@ export default function Schedule(props) {
     }
 
     return (
-        <Row className="duty-view bg-light" id="schedule">
-            <Col>
+        <Row className="duty-view bg-light g-0" id="schedule">
+            <Col style={mobile ? {height: "var(--schedule-duty-view-height)"} : {}}>
                 {dayTiles}
             </Col>
         </Row>

@@ -25,7 +25,7 @@ export default function DutyTile(props) {
             e.preventDefault();
             onClick(e);
         }}>
-        ✎
+        <i className="bi bi-person-fill-add"></i>
         </div>
     ));
 
@@ -99,8 +99,10 @@ export default function DutyTile(props) {
                         {options}
                     </Dropdown.Menu>
                 </Dropdown>
-                <div className="duty-tile-control control" onClick={() => setDoctorOnDuty(duty, null)}>✕</div>
+                <div className="duty-tile-control control ms-1" onClick={() => setDoctorOnDuty(duty, null)}><i className="bi bi-x-lg fs-6"></i></div>
             </div>
         </Col>
     );
 }
+
+//✕

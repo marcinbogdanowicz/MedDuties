@@ -17,12 +17,13 @@
     --schedule-logo-width: 25vw;
     --schedule-logo-height: 10vw;
     --schedule-logo-min-height: 7rem;
-    --schedule-left-col-height: calc(100vh - var(--schedule-logo-height));
-    --schedule-left-col-max-height: calc(100vh - var(--schedule-logo-min-height));
-    --schedule-duty-view-height: calc(100vh - var(--schedule-duty-menu-height));
-    --schedule-duty-view-min-height: 88vh;
+    --schedule-left-col-height: calc(100dvh - var(--schedule-logo-height));
+    --schedule-left-col-max-height: calc(100dvh - var(--schedule-logo-min-height));
+    --schedule-duty-view-height: calc(100dvh - var(--schedule-duty-menu-height));
+    --schedule-duty-view-min-height: 88dvh;
     --schedule-duty-menu-height: 10vw;
-    --schedule-duty-menu-max-height: 12vh;
+    --schedule-duty-menu-max-height: 12dvh;
+    --schedule-tile-table-padding: 7.5vw;
 }
 
 a {
@@ -51,11 +52,11 @@ a.light-link:hover {
 }
 
 .tile-table {
-    padding-top: 7.5vw;
-    padding-bottom: 7.5vw;
-    padding-left: 7.5vw;
+    padding-top: var(--schedule-tile-table-padding);
+    padding-bottom: var(--schedule-tile-table-padding);
+    padding-left: var(--schedule-tile-table-padding);
     background-color: var(--schedule-color-lightgray);
-    min-height: 100vh;
+    min-height: 100dvh;
 }
 
 .tile-table-flex {
@@ -160,16 +161,16 @@ a.light-link:hover {
 }
 
 .left-col {
-    max-height: calc(100vh - 7rem);
     height: var(--schedule-left-col-height);
+    max-height: var(--schedule-left-col-max-height);
     overflow-y: scroll;
     padding: 0;
     margin: 0;
 }
 
 .right-col {
-    min-height: 100vh;
-    max-height: 100vh;
+    min-height: 100dvh;
+    max-height: 100dvh;
     overflow-y: scroll;
     padding: 0;
     margin: 0;
@@ -367,7 +368,6 @@ a.light-link:hover {
 }
 
 .duty-tile-control.control:hover {
-    font-size: 1.75rem;
     padding: 0.75rem;
     color: var(--schedule-color-primary);
     background-color: var(--schedule-color-dimlight);
@@ -414,18 +414,18 @@ a.light-link:hover {
 
 .my-offcanvas {
     position: fixed;
-    bottom: 12vh;
+    bottom: 12dvh;
     padding-top: 1em;
     padding-bottom: 1em;
     padding-left: 2em;
     padding-right: 2em;
-    height: 40vh;
+    height: 40dvh;
     width: 75vw;
     background-color: var(--schedule-color-light);
 }
 
 .my-offcanvas.expand {
-    height: 60vh !important;
+    height: 60dvh !important;
 }
 
 .my-offcanvas-control {
@@ -497,6 +497,13 @@ a.light-link:hover {
     text-align: right;
 }
 
+.stat-table > tbody > tr > th {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    max-width: 10vw;
+}
+
 .link {
     cursor: pointer;
 }
@@ -514,10 +521,20 @@ a.light-link:hover {
 }
 
 .alert-custom {
-    top: 20vh;
+    top: 20dvh;
     width: 40vw;
     min-width: 300px;
     max-width: 90vw;
+}
+
+.alert-buttons {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.alert-buttons button {
+    min-width: 25%;
 }
 
 .no-select {
@@ -542,8 +559,8 @@ a.light-link:hover {
     position: fixed;
     top: 0;
     left: 0;
-    min-height: 100vh;
-    max-height: 100vh;
+    min-height: 100dvh;
+    max-height: 100dvh;
     min-width: 100vw;
     max-width: 100vw;
     background-color: rgba(0, 0, 0, 0.4);
@@ -569,8 +586,8 @@ a.light-link:hover {
 .overlay-window {
     width: 80vw;
     max-width: 1024px;
-    min-height: 25vh;
-    max-height: 95vh;
+    min-height: 25dvh;
+    max-height: 95dvh;
     background-color: var(--schedule-color-light);
     padding: 5rem;
     color: black;
@@ -579,7 +596,7 @@ a.light-link:hover {
 .overlay-window-content {
     width: 100%;
     height: 100%;
-    max-height: calc(95vh - 10rem);
+    max-height: calc(95dvh - 10rem);
     overflow: scroll;
 }
 
@@ -814,8 +831,8 @@ a.light-link:hover {
     left: 0;
     bottom: 0;
     width: 100%;
-    height: 1rem;
-    font-size: 0.625rem;
+    height: 1.5rem;
+    font-size: 0.875rem;
     padding-left: 0.25rem;
 }
 
@@ -884,6 +901,28 @@ a.light-link:hover {
     display: none;
 }
 
+.close-sign {
+    position: absolute;
+    right: 0;
+    font-size: 1.75rem;
+    margin-right: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.cookie-alert {
+    width: 90vw;
+    bottom: 3rem;
+    padding: 1rem;
+    background-color: var(--schedule-color-light);
+    border: var(--schedule-color-gray-dark) 0.15rem solid;
+    font-size: min(1rem, 14px);
+}
+
+.cookie-alert button {
+    width: 100%;
+    max-width: 25vw;
+}
+
 
 @media (min-width: 769px) and (max-width: 992px) { 
     :root {
@@ -917,17 +956,22 @@ a.light-link:hover {
         --schedule-tile-width: 30vw;
         --schedule-tile-height: 20vw;
         --schedule-logo-width: 100vw;
-        --schedule-logo-min-height: 6rem; 
+        --schedule-logo-min-height: 6rem;
+        --schedule-tile-table-padding: 5vw;
+        --schedule-duty-menu-height: 12dvh;
+        --schedule-duty-view-height: calc(100dvh - var(--schedule-duty-menu-height) - var(--schedule-logo-min-height));
+        --schedule-duty-view-min-height: calc(100dvh - var(--schedule-duty-menu-height) - var(--schedule-logo-min-height));
         --fs-tile-add: 2rem;
         --fs-tile: 1rem;
     }
 
     .shrink-for-logo {
-        max-height: calc(100vh - var(--schedule-logo-min-height)) !important;
+        max-height: calc(100dvh - var(--schedule-logo-min-height)) !important;
         margin-top: var(--schedule-logo-min-height) !important;
     }
 
     .logo {
+        height: var(--schedule-logo-min-height);
         padding-left: 0px;
         position: fixed;
         top: 0;
@@ -940,10 +984,10 @@ a.light-link:hover {
     }
 
     .left-col {
-        min-height: calc(100vh - var(--schedule-logo-height));
-        max-height: calc(100vh - var(--schedule-logo-height));
+        height: calc(100dvh - var(--schedule-logo-min-height));
+        max-height: calc(100dvh - var(--schedule-logo-min-height));
         position: fixed;
-        top: var(--schedule-logo-height);
+        top: var(--schedule-logo-min-height);
         left: 0;
         overflow: scroll;
         width: 100%;
@@ -954,8 +998,9 @@ a.light-link:hover {
     }
 
     .right-col {
-        height: calc(100vh - var(--schedule-logo-min-height));
-        max-height: calc(100vh - var(--schedule-logo-min-height));
+        min-height: calc(100dvh - var(--schedule-logo-min-height));
+        height: calc(100dvh - var(--schedule-logo-min-height));
+        max-height: calc(100dvh - var(--schedule-logo-min-height));
         position: fixed;
         top: var(--schedule-logo-min-height);
         left: 0;
@@ -973,18 +1018,24 @@ a.light-link:hover {
         top: 0;
         right: 0;
         padding-right: 0.375rem;
-        font-size: 2rem;
+        font-size: 1.75rem;
         color: var(--schedule-color-light);
         animation-name: blink;
-        animation-duration: 1s;
+        animation-duration: 0.5s;
         animation-delay: 1s;
         animation-timing-function: linear;
         z-index: 101;
     }
 
+    .col-toggle:hover {
+        color: var(--schedule-color-light) !important;
+    }
+
     .tile-table {
-        padding: 5vw;
-        min-height: none;
+        padding-top: var(--schedule-tile-table-padding);
+        padding-left: var(--schedule-tile-table-padding);
+        padding-bottom: var(--schedule-tile-table-padding);
+        min-height: calc(100dvh - var(--schedule-logo-min-height));;
     }
 
     .schedule-tile-normal {
@@ -1082,7 +1133,6 @@ a.light-link:hover {
     }
 
     .duty-menu {
-        height: 12vh;
         position: fixed;
         bottom: 0;
         left: 0;
@@ -1104,8 +1154,10 @@ a.light-link:hover {
     }
 
     .my-offcanvas {
-        height: 50vh;
+        height: 50dvh;
         width: 100vw;
+        padding-left: 1em;
+        padding-right: 1em;
     }
 
     .my-offcanvas .stat-table thead th {
@@ -1114,16 +1166,57 @@ a.light-link:hover {
 
     .overlay-window {
         width: 100vw;
-        min-height: 100vh;
-        max-height: 100vh;
+        min-height: 100dvh;
+        max-height: 100dvh;
         padding: 1rem;
     }
     
     .overlay-window-content {
         width: 100%;
-        height: 90vh;
-        margin-top: 5vh;
-        margin-bottom: 5vh;
-        max-height: calc(100vh - 2rem);
+        height: 90dvh;
+        margin-top: 5dvh;
+        margin-bottom: 5dvh;
+        max-height: calc(100dvh - 2rem);
+    }
+
+    .table-sm > :not(caption) > * > * {
+        padding: 0.1rem 0.35rem !important;
+    }
+
+    .stat-table td {
+        text-align: center;
+    }
+
+    .stat-table > tbody > tr > th {
+        max-width: 25vw;
+    }
+
+    .alert-custom {
+        top: 15dvh;
+        width: 90vw;
+    }
+
+    .alert-custom .alert-message {
+        max-height: 55dvh;
+        overflow: scroll;
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+        padding: 0.5rem;
+    }
+
+    .alert-buttons {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .alert-buttons button {
+        margin-bottom: 0.5rem;
+    }
+
+    .cookie-alert {
+        bottom: 2.5rem;
+        background-color: white;
+        border: var(--schedule-color-gray-dark) 0.1rem solid;
+        line-height: 1.15;
     }
 }

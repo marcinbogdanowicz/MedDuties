@@ -31,7 +31,11 @@ export default function Login() {
             await logUserIn(userData.username, userData.password);
             navigate('/menu/');
         } catch (error) {
-            setMessage('Niepoprawne dane logowania.');
+            if (error.status === 401) {
+                setMessage('Niepoprawne dane logowania.');
+            } else {
+                setMessage('Podczas logowania wystąpił błąd.')
+            }
             console.log(error);
         }
     }

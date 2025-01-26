@@ -10,7 +10,7 @@ export default function Offcanvas(props) {
     const toggle = props.toggle;
 
     return (
-        <Row className={"my-offcanvas border-top" + (hide ? " hide" : "") + (shrink ? "" : " expand")}>
+        <Row className={"my-offcanvas border-top g-0" + (hide ? " hide" : "") + (shrink ? "" : " expand")}>
             {heading}
             <div className="my-offcanvas-control mt-3 mx-3">
                 <div className="my-offcanvas-resize-control" onClick={() => setShrink(!shrink)}>

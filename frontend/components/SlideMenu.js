@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import axiosInstance from '../axiosApi';
 import refreshTokenNotExpired from './refreshTokenNotExpired';
 import Contact from './Contact';
+import { version } from '../version';
 
 export default function SlideMenu(props) {
     const navigate = useNavigate();
@@ -39,9 +40,13 @@ export default function SlideMenu(props) {
     return (
         <>
             <div className='menu-trigger' onClick={toggleShow}>☰</div>
+            { show &&
             <Offcanvas show={show} onHide={handleClose} className="sliding-menu">
                 <Offcanvas.Header>
-                    <Offcanvas.Title>Dyżury Medyczne</Offcanvas.Title>
+                    <Offcanvas.Title>
+                        Dyżury Medyczne 
+                        <div className="fs-6">{ `v.${version}` }</div>
+                    </Offcanvas.Title>
                 </Offcanvas.Header>
                 <Offcanvas.Body>
                     <ul>
@@ -84,6 +89,7 @@ export default function SlideMenu(props) {
                     <div className="copyright">© Marcin Bogdanowicz 2023</div>
                 </Offcanvas.Body>
             </Offcanvas>
+            }
         </>
     );
 }

@@ -63,6 +63,7 @@ export default function Duties() {
         show: false,
         content: []
     });
+    const [pendingDecision, setPendingDecision] = useState({});
 
     useEffect(() => {
         if (!schedulesData) { return; }
@@ -248,13 +249,14 @@ export default function Duties() {
     }
 
     const removeSchedule = () => {
+        setPendingDecision({remove: true});
         const message = (
             <div>
                 <p>Próbujesz <strong>usunąć grafik</strong>. Wszystkie ustawienia
                 tego grafiku, w tym ułożone dyżury i preferencje lekarzy, 
                 zostaną usunięte.<br />
                 Czy chcesz kontynuować?</p>
-                <div>
+                <div className="alert-buttons">
                     <button 
                         className='btn btn-warning'
                         onClick={_remove}
@@ -262,7 +264,7 @@ export default function Duties() {
                         Usuń
                     </button>
                     <button 
-                        className='btn btn-success ms-4' 
+                        className='btn btn-success' 
                         onClick={closeAlert}
                     >
                         Anuluj
@@ -320,6 +322,7 @@ export default function Duties() {
             ...prevState,
             show: false
         }));
+        setPendingDecision({});
     }
 
     const showSpinner = (...content) => {
@@ -433,8 +436,9 @@ export default function Duties() {
                 <button 
                     onClick={removeSchedule} 
                     className="btn btn-light border mb-3 w-45"
+                    disabled={pendingDecision.remove}
                 >
-                    Usuń
+                    { pendingDecision.remove ? "Potw..." : "Usuń" }
                 </button>
             </div>
         </React.Fragment>
@@ -498,27 +502,31 @@ export default function Duties() {
                         <h5>Wybierz grafik by wyświetlić szczegóły</h5>
                     }
                 </div>
-                {
-                    alertData.show &&
-                    <Alert 
-                        header={alertData.header}
-                        variant="warning"
-                        dismiss={closeAlert}
-                        clickToClose
-                    >
-                        {alertData.message}
-                    </Alert>
-                }
-            <OverlaySpinner show={spinnerData.show} content={spinnerData.content} />
         </div>
     );
 
-    return <ColumnLayout 
-        leftCol={leftCol} 
-        rightCol={rightCol} 
-        logoPrimary={unit.name} 
-        logoSecondary={"Grafiki dyżurów"}
-        showLeftCol={show}
-        setShowLeftCol={setShow}
-    />
+    return (
+        <div>
+            <ColumnLayout 
+                leftCol={leftCol} 
+                rightCol={rightCol} 
+                logoPrimary={unit.name} 
+                logoSecondary={"Grafiki dyżurów"}
+                showLeftCol={show}
+                setShowLeftCol={setShow}
+            />
+            {
+                alertData.show &&
+                <Alert 
+                    header={alertData.header}
+                    variant="warning"
+                    dismiss={closeAlert}
+                    clickToClose
+                >
+                    {alertData.message}
+                </Alert>
+            }
+            <OverlaySpinner show={spinnerData.show} messages={spinnerData.content} />
+        </div>
+    );
 }
