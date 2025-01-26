@@ -1,0 +1,11 @@
+node_modules
+.env.dev
+.env.prod
+.env.prod.db
+docker-compose.yml
+docker-compose.prod.yml
+Dockerfile
+entrypoint.sh
+venv
+db.sqlite3
+__pycache__
