@@ -1,8 +1,9 @@
 import re
+
+from apps.api.models import Unit
 from django.http import Http404
 from rest_framework import serializers
 from rest_framework.reverse import reverse
-from .models import Unit
 
 
 class DoctorsListHyperlink(serializers.HyperlinkedIdentityField):
@@ -11,8 +12,7 @@ class DoctorsListHyperlink(serializers.HyperlinkedIdentityField):
         url_kwargs = {
             'unit_pk': obj.pk,
         }
-        return reverse(view_name, kwargs=url_kwargs, 
-                       request=request, format=format)
+        return reverse(view_name, kwargs=url_kwargs, request=request, format=format)
 
 
 class MonthlyDutiesListHyperlink(serializers.HyperlinkedIdentityField):
@@ -21,8 +21,7 @@ class MonthlyDutiesListHyperlink(serializers.HyperlinkedIdentityField):
         url_kwargs = {
             'unit_pk': obj.pk,
         }
-        return reverse(view_name, kwargs=url_kwargs, 
-                       request=request, format=format)
+        return reverse(view_name, kwargs=url_kwargs, request=request, format=format)
 
 
 class MonthlyDataListHyperlink(serializers.HyperlinkedIdentityField):
@@ -33,8 +32,7 @@ class MonthlyDataListHyperlink(serializers.HyperlinkedIdentityField):
             'month': obj.monthandyear[0],
             'year': obj.monthandyear[1],
         }
-        return reverse(view_name, kwargs=url_kwargs, 
-                       request=request, format=format)
+        return reverse(view_name, kwargs=url_kwargs, request=request, format=format)
 
 
 class DutyListHyperlink(serializers.HyperlinkedIdentityField):
@@ -45,8 +43,7 @@ class DutyListHyperlink(serializers.HyperlinkedIdentityField):
             'month': obj.monthandyear[0],
             'year': obj.monthandyear[1],
         }
-        return reverse(view_name, kwargs=url_kwargs, 
-                       request=request, format=format)
+        return reverse(view_name, kwargs=url_kwargs, request=request, format=format)
 
     def get_object(self, view_name, view_args, view_kwargs):
         try:
@@ -54,11 +51,7 @@ class DutyListHyperlink(serializers.HyperlinkedIdentityField):
         except Unit.DoesNotExist:
             raise Http404
 
-        lookup_kwargs = {
-            'monthly_duties__unit': unit,
-            'position': view_kwargs['position'],
-            'day': view_kwargs['day']
-        }
+        lookup_kwargs = {'monthly_duties__unit': unit, 'position': view_kwargs['position'], 'day': view_kwargs['day']}
         return self.get_queryset().get(**lookup_kwargs)
 
 
@@ -77,15 +70,14 @@ class IntegerListField(serializers.Field):
             if match:
                 data = re.findall('\d{1,2}', data)
                 data = list(map(int, data))
-                return data            
-        raise serializers.ValidationError(
-            'Nieprawidłowy format danych. Oczekiwano: "1 2 7 ... 10 26..."')
+                return data
+        raise serializers.ValidationError('Nieprawidłowy format danych. Oczekiwano: "1 2 7 ... 10 26..."')
 
 
 class MonthAndYearField(serializers.Field):
     """
-    Takes as argument a list or a tuple, 
-    where first element is month in range 1 - 12 
+    Takes as argument a list or a tuple,
+    where first element is month in range 1 - 12
     and second element is year of 4 digits.
     """
 
@@ -99,6 +91,5 @@ class MonthAndYearField(serializers.Field):
             if match:
                 data = re.split('/', data)
                 data = list(map(int, data))
-                return data            
-        raise serializers.ValidationError(
-            'Nieprawidłowy format danych. Oczekiwano: "MM/YYYY"')
+                return data
+        raise serializers.ValidationError('Nieprawidłowy format danych. Oczekiwano: "MM/YYYY"')

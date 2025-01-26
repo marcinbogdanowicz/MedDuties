@@ -1,17 +1,16 @@
-import re
 from calendar import monthrange
-from django.db.utils import IntegrityError
-from rest_framework import serializers, exceptions
-from .models import User, Unit, Doctor, MonthlyDuties, DoctorMonthlyData, Duty
-from . import custom_serializer_fields
+
+from apps.api import custom_serializer_fields
+from apps.api.models import Doctor, DoctorMonthlyData, Duty, MonthlyDuties, Unit, User
+from rest_framework import exceptions, serializers
 
 
 class UnitSerializer(serializers.ModelSerializer):
 
     monthly_duties = custom_serializer_fields.MonthlyDutiesListHyperlink(
-        read_only=True, required=False, view_name='monthly-duties-list')
-    doctors = custom_serializer_fields.DoctorsListHyperlink(
-        read_only=True, required=False, view_name='doctor-list')
+        read_only=True, required=False, view_name='monthly-duties-list'
+    )
+    doctors = custom_serializer_fields.DoctorsListHyperlink(read_only=True, required=False, view_name='doctor-list')
 
     class Meta:
         model = Unit
@@ -31,10 +30,8 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('pk', 'username', 'password', 'email', 'is_head_doctor',
-                  'unit', 'my_doctor')
-        extra_kwargs = {'my_doctor': {'read_only': True},
-                        'email': {'required': True}}
+        fields = ('pk', 'username', 'password', 'email', 'is_head_doctor', 'unit', 'my_doctor')
+        extra_kwargs = {'my_doctor': {'read_only': True}, 'email': {'required': True}}
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
@@ -46,15 +43,15 @@ class UserSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         request = self.context['request']
-        if ((request.method == 'PUT' or request.method == 'PATCH')
-                and validated_data.get('unit', False)
-                and instance.unit is not None):
-            raise exceptions.PermissionDenied(
-                "User's unit cannot be changed after assignment.")
+        if (
+            (request.method == 'PUT' or request.method == 'PATCH')
+            and validated_data.get('unit', False)
+            and instance.unit is not None
+        ):
+            raise exceptions.PermissionDenied("User's unit cannot be changed after assignment.")
 
         if validated_data.get('is_head_doctor', False):
-            raise exceptions.PermissionDenied(
-                "User's head or non-head doctor status is fixed.")
+            raise exceptions.PermissionDenied("User's head or non-head doctor status is fixed.")
 
         return super().update(instance, validated_data)
 
@@ -69,19 +66,14 @@ class UserSerializer(serializers.ModelSerializer):
             print(request.user)
             print(request.auth)
             print(new_user_is_head_doctor)
-            if ((request.user.is_anonymous
-                    or not request.user.is_head_doctor) 
-                    and not new_user_is_head_doctor):
-                raise exceptions.PermissionDenied(
-                    "Only head users can create non-head users' accounts.")
+            if (request.user.is_anonymous or not request.user.is_head_doctor) and not new_user_is_head_doctor:
+                raise exceptions.PermissionDenied("Only head users can create non-head users' accounts.")
 
             unit = validated_data.get('unit', None)
-            if (unit is not None
-                    and unit.owner != request.user
-                    and not new_user_is_head_doctor):
+            if unit is not None and unit.owner != request.user and not new_user_is_head_doctor:
                 raise exceptions.PermissionDenied(
-                    ("User cannot add to user instance unit " +
-                    "different than his own."))
+                    ("User cannot add to user instance unit " + "different than his own.")
+                )
 
         return validated_data
 
@@ -106,10 +98,8 @@ class DoctorSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         request = self.context['request']
         new_unit = validated_data.get('unit', None)
-        if ((request.method == "PUT" or request.method == "PATCH")
-                and new_unit and new_unit != instance.unit):
-            raise exceptions.PermissionDenied(
-                "Doctors cannot change unit.")
+        if (request.method == "PUT" or request.method == "PATCH") and new_unit and new_unit != instance.unit:
+            raise exceptions.PermissionDenied("Doctors cannot change unit.")
 
         for name, attr in validated_data.items():
             setattr(instance, name, attr)
@@ -126,41 +116,43 @@ class DoctorSerializer(serializers.ModelSerializer):
         if request:
 
             if not request.user.is_head_doctor:
-                raise exceptions.PermissionDenied(
-                    "Only head users can create and modify doctors.")
+                raise exceptions.PermissionDenied("Only head users can create and modify doctors.")
 
             impersonated_user = validated_data.get('impersonated_user', None)
-            if (impersonated_user is not None 
-                    and impersonated_user.unit != request.user.unit):
+            if impersonated_user is not None and impersonated_user.unit != request.user.unit:
                 raise exceptions.PermissionDenied(
-                    "Impersonated user cannot be of a different unit " +
-                    "than his doctor instance.")
+                    "Impersonated user cannot be of a different unit " + "than his doctor instance."
+                )
 
         return validated_data
 
 
 class DoctorMonthlyDataSerializer(serializers.ModelSerializer):
 
-    exceptions = custom_serializer_fields.IntegerListField(
-        required=False)
-    preferred_days = custom_serializer_fields.IntegerListField(
-        required=False)
-    preferred_weekdays = custom_serializer_fields.IntegerListField(
-        required=False)
-    preferred_positions = custom_serializer_fields.IntegerListField(
-        required=False)
+    exceptions = custom_serializer_fields.IntegerListField(required=False)
+    preferred_days = custom_serializer_fields.IntegerListField(required=False)
+    preferred_weekdays = custom_serializer_fields.IntegerListField(required=False)
+    preferred_positions = custom_serializer_fields.IntegerListField(required=False)
 
     class Meta:
         model = DoctorMonthlyData
-        fields = ('pk', 'doctor', 'monthly_duties', 'strain', 
-                  'max_number_of_duties', 'exceptions', 'preferred_days',
-                  'preferred_weekdays', 'preferred_positions', 'locked')
-    
+        fields = (
+            'pk',
+            'doctor',
+            'monthly_duties',
+            'strain',
+            'max_number_of_duties',
+            'exceptions',
+            'preferred_days',
+            'preferred_weekdays',
+            'preferred_positions',
+            'locked',
+        )
+
     def create(self, validated_data):
         # Set user as object owner.
         request = self.context['request']
-        instance = DoctorMonthlyData.objects.create(
-            owner=request.user.unit.owner, **validated_data)
+        instance = DoctorMonthlyData.objects.create(owner=request.user.unit.owner, **validated_data)
         instance.full_clean()
         instance.save()
         return instance
@@ -181,22 +173,24 @@ class DoctorMonthlyDataSerializer(serializers.ModelSerializer):
                 doctor = doctor or self.instance.doctor
                 monthly_duties = monthly_duties or self.instance.monthly_duties
 
-            if (not request.user.is_head_doctor 
-                    and request.user != doctor.impersonated_user):
+            if not request.user.is_head_doctor and request.user != doctor.impersonated_user:
                 raise exceptions.PermissionDenied(
-                    ("Only head users and user who is represented "+
-                    "by the doctor instance can create and modify "+
-                    "doctors settings."))
+                    (
+                        "Only head users and user who is represented "
+                        + "by the doctor instance can create and modify "
+                        + "doctors settings."
+                    )
+                )
 
             if request.user.unit.owner != doctor.owner:
                 raise exceptions.PermissionDenied(
-                    ("User can create or modify monthly settings "+
-                    "only for doctors of his unit."))
+                    ("User can create or modify monthly settings " + "only for doctors of his unit.")
+                )
 
             if monthly_duties.owner != request.user.unit.owner:
                 raise exceptions.PermissionDenied(
-                    ("User can create or modify doctor settings "+
-                    "only for schedules for his unit."))
+                    ("User can create or modify doctor settings " + "only for schedules for his unit.")
+                )
 
         return validated_data
 
@@ -205,8 +199,7 @@ class DutySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Duty
-        fields = ('pk', 'day', 'weekday', 'week', 'position', 'strain_points',
-                 'doctor', 'monthly_duties', 'user_set')
+        fields = ('pk', 'day', 'weekday', 'week', 'position', 'strain_points', 'doctor', 'monthly_duties', 'user_set')
 
     def create(self, validated_data):
         # Set user as owner during creation.
@@ -225,21 +218,19 @@ class DutySerializer(serializers.ModelSerializer):
         if request:
 
             if not request.user.is_head_doctor:
-                raise exceptions.PermissionDenied(
-                    ("Only head doctors can create or modify "+
-                    "duties."))
+                raise exceptions.PermissionDenied(("Only head doctors can create or modify " + "duties."))
 
             doctor = validated_data.get('doctor', None)
             if doctor is not None and doctor.owner != request.user:
                 raise exceptions.PermissionDenied(
-                    ("User cannot create nor modify duties "+
-                    "for doctor he does not own."))
+                    ("User cannot create nor modify duties " + "for doctor he does not own.")
+                )
 
             monthly_duties = validated_data.get('monthly_duties', None)
             if monthly_duties is not None and monthly_duties.owner != request.user:
                 raise exceptions.PermissionDenied(
-                    ("User cannot create nor modify duties "+
-                    "for schedule he does not own."))
+                    ("User cannot create nor modify duties " + "for schedule he does not own.")
+                )
 
         return validated_data
 
@@ -248,14 +239,24 @@ class DutyNestedSerializer(DutySerializer):
 
     class Meta:
         model = Duty
-        fields = ('pk', 'day', 'weekday', 'week', 'position', 'doctor',
-                 'strain_points', 'monthly_duties', 'owner', 'user_set')
+        fields = (
+            'pk',
+            'day',
+            'weekday',
+            'week',
+            'position',
+            'doctor',
+            'strain_points',
+            'monthly_duties',
+            'owner',
+            'user_set',
+        )
         extra_kwargs = {
             'pk': {'read_only': False, 'required': False},
             'owner': {'write_only': True, 'required': False},
-            'monthly_duties': {'required': False}
+            'monthly_duties': {'required': False},
         }
-    
+
     def validate(self, attrs):
         validated_data = attrs
 
@@ -267,8 +268,8 @@ class DutyNestedSerializer(DutySerializer):
             doctor = validated_data.get('doctor', None)
             if doctor is not None and doctor.owner != request.user:
                 raise exceptions.PermissionDenied(
-                    ("User cannot create or modify duties "+
-                    "for doctor he does not own."))
+                    ("User cannot create or modify duties " + "for doctor he does not own.")
+                )
 
         return validated_data
 
@@ -277,16 +278,26 @@ class DoctorMonthlyDataNestedSerializer(DoctorMonthlyDataSerializer):
 
     class Meta:
         model = DoctorMonthlyData
-        fields = ('pk', 'doctor', 'monthly_duties', 'strain', 
-                  'max_number_of_duties', 'exceptions', 'preferred_days',
-                  'preferred_weekdays', 'preferred_positions', 'locked', 
-                  'owner')
+        fields = (
+            'pk',
+            'doctor',
+            'monthly_duties',
+            'strain',
+            'max_number_of_duties',
+            'exceptions',
+            'preferred_days',
+            'preferred_weekdays',
+            'preferred_positions',
+            'locked',
+            'owner',
+        )
         extra_kwargs = {
             'pk': {'read_only': False, 'required': False},
             'owner': {'write_only': True, 'required': False},
             'impersonated_user': {'write_only': True},
-            'monthly_duties': {'required': False}}
-    
+            'monthly_duties': {'required': False},
+        }
+
     def validate(self, attrs):
         validated_data = attrs
 
@@ -298,16 +309,16 @@ class DoctorMonthlyDataNestedSerializer(DoctorMonthlyDataSerializer):
             doctor = validated_data.get('doctor', None)
             if doctor is not None and request.user.unit.owner != doctor.owner:
                 raise exceptions.PermissionDenied(
-                    ("User can create or modify monthly settings "+
-                    "only for doctors of his unit."))
+                    ("User can create or modify monthly settings " + "only for doctors of his unit.")
+                )
 
         return validated_data
 
 
 class MonthlyDutiesSerializer(serializers.ModelSerializer):
     """
-    Data input format: 
-    {"monthandyear":"10/2022", 
+    Data input format:
+    {"monthandyear":"10/2022",
         //  optional:
     "doctor_data":[
         {"doctor":1,
@@ -329,9 +340,16 @@ class MonthlyDutiesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MonthlyDuties
-        fields = ('pk', 'monthandyear', 'number_of_days', 
-                  'first_weekday', 'duty_positions', 'unit', 
-                  'doctor_data', 'duties')
+        fields = (
+            'pk',
+            'monthandyear',
+            'number_of_days',
+            'first_weekday',
+            'duty_positions',
+            'unit',
+            'doctor_data',
+            'duties',
+        )
         extra_kwargs = {
             'number_of_days': {'read_only': True},
             'first_weekday': {'read_only': True},
@@ -358,10 +376,10 @@ class MonthlyDutiesSerializer(serializers.ModelSerializer):
 
         unit = request.user.unit
         duty_positions = unit.duty_positions
-         
+
         monthly_duties = MonthlyDuties.objects.create(
-            owner=owner, 
-            first_weekday=first_weekday, 
+            owner=owner,
+            first_weekday=first_weekday,
             number_of_days=number_of_days,
             unit=unit,
             duty_positions=duty_positions,
@@ -377,7 +395,7 @@ class MonthlyDutiesSerializer(serializers.ModelSerializer):
                 doctor_data['monthly_duties'] = monthly_duties
                 instance = DoctorMonthlyData.objects.create(**doctor_data)
                 instance.full_clean()
-                instance.save()            
+                instance.save()
         if duties is not None:
             for duty in duties:
                 duty['owner'] = monthly_duties.owner
@@ -403,8 +421,7 @@ class MonthlyDutiesSerializer(serializers.ModelSerializer):
         validated_data['owner'] = request.user
 
         month, year = validated_data['monthandyear']
-        validated_data['first_weekday'], validated_data['number_of_days'] = (
-            monthrange(year, month))
+        validated_data['first_weekday'], validated_data['number_of_days'] = monthrange(year, month)
 
         validated_data['unit'] = request.user.unit
         validated_data['duty_positions'] = request.user.unit.duty_positions
@@ -425,8 +442,7 @@ class MonthlyDutiesSerializer(serializers.ModelSerializer):
                     for name, attr in doctor_data.items():
                         setattr(dd_instance, name, attr)
                 except DoctorMonthlyData.DoesNotExist:
-                    dd_instance = DoctorMonthlyData.objects.create(
-                        **doctor_data)
+                    dd_instance = DoctorMonthlyData.objects.create(**doctor_data)
                 dd_instance.full_clean()
                 dd_instance.save()
 
@@ -453,12 +469,10 @@ class MonthlyDutiesSerializer(serializers.ModelSerializer):
         # Standard validation will handle 'required' requirement.
         request = self.context.get('request', {})
         if request:
-        
+
             if not request.user.is_head_doctor:
-                raise exceptions.PermissionDenied(
-                    ("Only head doctors can create or modify "+
-                    "new duty schedules."))
-        
+                raise exceptions.PermissionDenied(("Only head doctors can create or modify " + "new duty schedules."))
+
         return validated_data
 
 
@@ -466,4 +480,7 @@ class MonthlyDutiesListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MonthlyDuties
-        fields = ('pk', 'monthandyear',)
+        fields = (
+            'pk',
+            'monthandyear',
+        )

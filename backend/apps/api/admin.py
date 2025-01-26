@@ -1,6 +1,6 @@
+from apps.api.models import Doctor, DoctorMonthlyData, Duty, MonthlyDuties, Unit, User
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import User, Unit, Doctor, DoctorMonthlyData, MonthlyDuties, Duty
 
 admin.site.register(User, UserAdmin)
 admin.site.register(Unit)

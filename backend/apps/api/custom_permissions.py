@@ -1,7 +1,7 @@
+from apps.api.models import User
+from django.utils.translation import gettext_lazy as _
 from rest_framework import permissions
 from rest_framework_simplejwt.tokens import AccessToken
-from django.utils.translation import gettext_lazy as _
-from .models import User
 
 
 def get_user_id_from_token(request):
@@ -24,13 +24,13 @@ class IsOwnerOrReadOnlyIfUnitMember(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         id = get_user_id_from_token(request)
         if not id:
-            return False            
+            return False
         user = User.objects.get(pk=id)
 
         # Safe methods.
         if request.method in permissions.SAFE_METHODS:
             return obj.owner.unit == user.unit
-        
+
         # Other methods.
         return obj.owner == user
 
@@ -57,10 +57,10 @@ class IsOwnerOrIsImpersonatedDoctor(permissions.BasePermission):
 
 class IsUser(permissions.BasePermission):
     """
-    Requires user to be the queried user object. 
+    Requires user to be the queried user object.
     Suitable only for user-detail view.
     """
-    
+
     message = _('Attempt to access another users data.')
 
     def has_object_permission(self, request, view, obj):

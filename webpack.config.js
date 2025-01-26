@@ -12,7 +12,7 @@ module.exports = {
 
         // where compiled files go
         path: path.resolve(__dirname, 
-            "backend/frontend/static/frontend/public/"),
+            "backend/apps/frontend/static/frontend/public/"),
         
         // 127.0.0.1/static/frontend/public/ where files 
         // are served from (can be changed for production)

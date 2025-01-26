@@ -1,38 +1,32 @@
 import json
+
+from apps.api import custom_permissions
+from apps.api.models import Doctor, DoctorMonthlyData, Duty, MonthlyDuties, Unit, User
+from apps.api.serializers import (
+    DoctorMonthlyDataSerializer,
+    DoctorSerializer,
+    DutySerializer,
+    MonthlyDutiesListSerializer,
+    MonthlyDutiesSerializer,
+    UnitSerializer,
+    UserSerializer,
+)
 from django.shortcuts import get_object_or_404
 from django.utils.translation import gettext as _
-from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework import permissions, status, exceptions
-from rest_framework.views import APIView
-from rest_framework.settings import api_settings
+from rest_framework import exceptions, permissions, status
 from rest_framework.generics import (
     CreateAPIView,
     ListAPIView,
     ListCreateAPIView,
-    RetrieveUpdateDestroyAPIView, 
     RetrieveUpdateAPIView,
+    RetrieveUpdateDestroyAPIView,
 )
 from rest_framework.response import Response
-from .serializers import (
-    UserSerializer,
-    UnitSerializer,
-    DoctorSerializer,
-    MonthlyDutiesSerializer,
-    MonthlyDutiesListSerializer,
-    DoctorMonthlyDataSerializer,
-    DutySerializer
-)
-from .models import (
-    User,
-    Unit,
-    Doctor,
-    MonthlyDuties,
-    DoctorMonthlyData,
-    Duty
-)
-from . import custom_permissions
+from rest_framework.settings import api_settings
+from rest_framework.views import APIView
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 
 class ObtainTokenPairView(TokenObtainPairView):
@@ -51,8 +45,7 @@ class CreateUserView(CreateAPIView):
         if creating_head_user:
             return []
         else:
-            return [auth() for auth 
-                    in api_settings.DEFAULT_AUTHENTICATION_CLASSES]
+            return [auth() for auth in api_settings.DEFAULT_AUTHENTICATION_CLASSES]
 
 
 class LogoutAndBlacklistRefreshTokenForUserView(APIView):
@@ -76,6 +69,7 @@ class UserDetailView(RetrieveUpdateDestroyAPIView):
     Returns details of a single user.
     Accessible by that user only.
     """
+
     permission_classes = (custom_permissions.IsUser, permissions.IsAuthenticated)
 
     queryset = User.objects.all()
@@ -86,6 +80,7 @@ class UnitListView(ListCreateAPIView):
     """
     Lists all units user belongs to.
     """
+
     serializer_class = UnitSerializer
 
     def get_queryset(self):
@@ -99,6 +94,7 @@ class UnitDetailView(RetrieveUpdateAPIView):
     Returns details of single unit.
     Accessible by unit members only.
     """
+
     queryset = Unit.objects.all()
     serializer_class = UnitSerializer
 
@@ -113,12 +109,12 @@ class DoctorListView(ListCreateAPIView):
     Returns a list of all unit doctors.
     Accessible by unit members only.
     """
+
     serializer_class = DoctorSerializer
 
     def get_queryset(self):
         if self.request.user.unit is not None:
-            unit = get_object_or_404(Unit, pk=self.kwargs['unit_pk'], 
-                                     owner=self.request.user.unit.owner)
+            unit = get_object_or_404(Unit, pk=self.kwargs['unit_pk'], owner=self.request.user.unit.owner)
             return Doctor.objects.filter(unit=unit)
         raise exceptions.PermissionDenied('User does not belong to any unit.')
 
@@ -140,6 +136,7 @@ class DoctorDetailView(RetrieveUpdateDestroyAPIView):
         self.check_object_permissions(self.request, obj)
         return obj
 
+
 class DoctorDutiesListView(ListAPIView):
     """
     Returns all duties of a single doctor.
@@ -151,8 +148,7 @@ class DoctorDutiesListView(ListAPIView):
         user = self.request.user
 
         if user.unit is not None:
-            unit = get_object_or_404(Unit, pk=self.kwargs['unit_pk'], 
-                                    owner=user.unit.owner)
+            unit = get_object_or_404(Unit, pk=self.kwargs['unit_pk'], owner=user.unit.owner)
             doctor = get_object_or_404(Doctor, pk=self.kwargs['doctor_pk'], unit=unit)
             return Duty.objects.filter(doctor=doctor)
         raise exceptions.PermissionDenied('User does not belong to any unit.')
@@ -163,6 +159,7 @@ class MonthlyDutiesListView(ListCreateAPIView):
     Returns all unit's monthly duties objects.
     Accessible only by unit members.
     """
+
     def get_serializer_class(self):
         if self.request.method == "POST":
             return MonthlyDutiesSerializer
@@ -171,8 +168,7 @@ class MonthlyDutiesListView(ListCreateAPIView):
 
     def get_queryset(self):
         if self.request.user.unit is not None:
-            unit = get_object_or_404(Unit, pk=self.kwargs['unit_pk'], 
-                                     owner=self.request.user.unit.owner)
+            unit = get_object_or_404(Unit, pk=self.kwargs['unit_pk'], owner=self.request.user.unit.owner)
             return MonthlyDuties.objects.filter(unit=unit)
         raise exceptions.PermissionDenied('User does not belong to any unit.')
 
@@ -182,6 +178,7 @@ class MonthlyDutiesDetailView(RetrieveUpdateDestroyAPIView):
     Returns monthly duties object.
     Accessible only by  unit members.
     """
+
     serializer_class = MonthlyDutiesSerializer
 
     def get_queryset(self):
@@ -205,28 +202,27 @@ class DoctorMonthlyDataListView(ListCreateAPIView):
     Single doctor can only view his settings.
     Head doctor can view all doctors' settings.
     """
+
     serializer_class = DoctorMonthlyDataSerializer
 
     def get_queryset(self):
         if self.request.user.unit is not None:
-            unit = get_object_or_404(Unit, pk=self.kwargs['unit_pk'], 
-                                     owner=self.request.user.unit.owner)
+            unit = get_object_or_404(Unit, pk=self.kwargs['unit_pk'], owner=self.request.user.unit.owner)
 
             monthandyear = [self.kwargs['month'], self.kwargs['year']]
-            monthly_duties = get_object_or_404(MonthlyDuties,
-                                               monthandyear=monthandyear, 
-                                               unit=unit,
-                                               owner=self.request.user.unit.owner)
+            monthly_duties = get_object_or_404(
+                MonthlyDuties, monthandyear=monthandyear, unit=unit, owner=self.request.user.unit.owner
+            )
 
             # For users who are head doctors, return all unit doctors' monthly data.
             if self.request.user.is_head_doctor:
-                return DoctorMonthlyData.objects.filter(
-                    monthly_duties=monthly_duties, owner=self.request.user)
+                return DoctorMonthlyData.objects.filter(monthly_duties=monthly_duties, owner=self.request.user)
 
-            # For users who are doctors, return their monthly data only.            
+            # For users who are doctors, return their monthly data only.
             if self.request.user.my_doctor is not None:
                 return DoctorMonthlyData.objects.filter(
-                    monthly_duties=monthly_duties, doctor=self.request.user.my_doctor)
+                    monthly_duties=monthly_duties, doctor=self.request.user.my_doctor
+                )
 
             raise exceptions.PermissionDenied('User is neither a doctor nor unit head.')
 
@@ -238,20 +234,18 @@ class DoctorMonthlyDataDetailView(RetrieveUpdateDestroyAPIView):
     Returns single doctor's settings for one month.
     Accessible only by doctor and unit head.
     """
-    permission_classes = (permissions.IsAuthenticated, 
-                          custom_permissions.IsOwnerOrIsImpersonatedDoctor)
+
+    permission_classes = (permissions.IsAuthenticated, custom_permissions.IsOwnerOrIsImpersonatedDoctor)
     serializer_class = DoctorMonthlyDataSerializer
 
     def get_queryset(self):
         unit = get_object_or_404(Unit, pk=self.kwargs['unit_pk'])
         monthandyear = [self.kwargs['month'], self.kwargs['year']]
-        monthly_duties = get_object_or_404(MonthlyDuties, 
-                                        monthandyear=monthandyear, unit=unit)
+        monthly_duties = get_object_or_404(MonthlyDuties, monthandyear=monthandyear, unit=unit)
         return DoctorMonthlyData.objects.filter(monthly_duties=monthly_duties)
 
     def get_object(self):
-        obj = get_object_or_404(self.get_queryset(), 
-            pk=self.kwargs['doctor_monthly_data_pk'])
+        obj = get_object_or_404(self.get_queryset(), pk=self.kwargs['doctor_monthly_data_pk'])
         self.check_object_permissions(self.request, obj)
         return obj
 
@@ -261,16 +255,15 @@ class DutyListView(ListCreateAPIView):
     Returns list of duties for given month.
     Accessible only be unit members.
     """
+
     serializer_class = DutySerializer
 
     def get_queryset(self):
         if self.request.user.unit is not None:
             unit = get_object_or_404(Unit, pk=self.kwargs['unit_pk'])
             monthandyear = [self.kwargs['month'], self.kwargs['year']]
-            monthly_duties = get_object_or_404(MonthlyDuties, 
-                monthandyear=monthandyear, unit=unit)
-            return Duty.objects.filter(monthly_duties=monthly_duties,
-                                       owner=self.request.user.unit.owner)
+            monthly_duties = get_object_or_404(MonthlyDuties, monthandyear=monthandyear, unit=unit)
+            return Duty.objects.filter(monthly_duties=monthly_duties, owner=self.request.user.unit.owner)
         raise exceptions.PermissionDenied('User does not belong to any unit.')
 
 
@@ -279,18 +272,16 @@ class DutyDetailView(RetrieveUpdateDestroyAPIView):
     Returns a single duty.
     Accessible only by unit members.
     """
+
     serializer_class = DutySerializer
 
     def get_queryset(self):
         unit = get_object_or_404(Unit, pk=self.kwargs['unit_pk'])
         monthandyear = [self.kwargs['month'], self.kwargs['year']]
-        monthly_duties = get_object_or_404(
-            MonthlyDuties, monthandyear=monthandyear, unit=unit)
+        monthly_duties = get_object_or_404(MonthlyDuties, monthandyear=monthandyear, unit=unit)
         return Duty.objects.filter(monthly_duties=monthly_duties)
 
     def get_object(self):
-        obj = get_object_or_404(self.get_queryset(), 
-                                day=self.kwargs['day'], 
-                                position=self.kwargs['position'])
+        obj = get_object_or_404(self.get_queryset(), day=self.kwargs['day'], position=self.kwargs['position'])
         self.check_object_permissions(self.request, obj)
         return obj
