@@ -156,3 +156,5 @@ CORS_ALLOW_ALL_ORIGINS = False
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+MAX_DUTIES_PER_MONTH = 16

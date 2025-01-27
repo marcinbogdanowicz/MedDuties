@@ -1,5 +1,5 @@
-# from algorithm.constants import *
 from apps.api.custom_fields import IntegerListField, MonthAndYearField
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -57,7 +57,7 @@ class DoctorMonthlyData(models.Model):
     doctor = models.ForeignKey('Doctor', on_delete=models.CASCADE, related_name='monthly_data')
     monthly_duties = models.ForeignKey('MonthlyDuties', on_delete=models.CASCADE, related_name='doctor_data')
     strain = models.PositiveIntegerField(default=0, blank=True)
-    max_number_of_duties = models.PositiveIntegerField(default=16, blank=True)  # TODO use setting
+    max_number_of_duties = models.PositiveIntegerField(default=settings.MAX_DUTIES_PER_MONTH, blank=True)
     exceptions = IntegerListField(max_length=90, default=[], blank=True)
     preferred_days = IntegerListField(max_length=90, default=[], blank=True)
     preferred_weekdays = IntegerListField(max_length=60, default=[], blank=True)
