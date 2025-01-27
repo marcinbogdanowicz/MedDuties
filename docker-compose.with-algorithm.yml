@@ -1,0 +1,13 @@
+include:
+  - docker-compose.yml
+
+services:
+  algorithm:
+    build:
+      context: ./algorithm
+    volumes:
+      - ./algorithm/algorithm:/app/algorithm
+      - ./algorithm/web:/app/web
+    environment:
+      - PYTHONPATH=/app
+    command: flask --app web.app run --host=0.0.0.0
