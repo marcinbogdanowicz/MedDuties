@@ -54,12 +54,3 @@ urlpatterns = [
         name='duty-detail',
     ),
 ]
-
-"""
-TODO:
-1. Make sure doctors, duties, monthly duties and doctor monthly data are available
-only through url beginning with unit they belong to.
-2. Add authorization:
-    - unit head can modify all models that belong to that unit
-    - doctor owner can modify his monthly data
-"""
