@@ -63,9 +63,6 @@ class UserSerializer(serializers.ModelSerializer):
         if request:
             new_user_is_head_doctor = validated_data.get('is_head_doctor')
 
-            print(request.user)
-            print(request.auth)
-            print(new_user_is_head_doctor)
             if (request.user.is_anonymous or not request.user.is_head_doctor) and not new_user_is_head_doctor:
                 raise exceptions.PermissionDenied("Only head users can create non-head users' accounts.")
 

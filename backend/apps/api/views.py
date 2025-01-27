@@ -40,7 +40,6 @@ class CreateUserView(CreateAPIView):
     def get_authenticators(self):
         request_body = json.loads(self.request.body)
         creating_head_user = request_body.get('is_head_user', False)
-        print(creating_head_user)
         if creating_head_user:
             return []
         else:
