@@ -62,6 +62,7 @@ banned-modules = '''
 '''
 extend-immutable-calls = ['Depends']
 max-complexity = 15
+max-line-length = 120
 ban-relative-imports = true
 
 [tool.black]

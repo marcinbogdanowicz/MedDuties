@@ -7,8 +7,8 @@ WORKDIR /app
 RUN apt update
 RUN apt install -y libxml2-dev libxmlsec1-dev libxmlsec1-openssl postgresql-client libpoppler-cpp-dev
 
-COPY ./backend/requirements.txt /app
-RUN pip install -r /app/requirements.txt
+COPY ./backend/requirements/base.txt /app
+RUN pip install -r /app/base.txt
 
 COPY ./docker/django/entrypoint.sh /app
 RUN chmod +x /app/entrypoint.sh
