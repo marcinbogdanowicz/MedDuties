@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "apps.api",
     "apps.frontend",
+    "apps.algorithm",
 ]
 
 MIDDLEWARE = [
@@ -157,3 +158,5 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 MAX_DUTIES_PER_MONTH = 16
+
+ALGORITHM_API_URL = 'http://algorithm:5000'
