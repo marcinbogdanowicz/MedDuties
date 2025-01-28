@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 
 import requests
 from django.conf import settings
-from urllib3.exceptions import ConnectionError
 
 if TYPE_CHECKING:
     from requests import Response
@@ -22,7 +21,7 @@ class AlgorithmAPIClient:
         url = f"{self.base_url}/{path}"
         try:
             response = requests.request(method, url, headers=self.headers, json=data)
-        except ConnectionError as e:
+        except requests.exceptions.ConnectionError as e:
             logger.exception(e)
             return {"error": "Algorithm service is unavailable."}
 
