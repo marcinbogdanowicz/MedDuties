@@ -7,6 +7,20 @@ The app is based on demands of Polish medical system and is designed for use in 
 I decided to undertake the issue of setting fair shifts, based on one of my relatives
 experience of biased and unnecessarily strainful schedules. This is also my first portfolio project.
 
+## 2025 revision
+
+On 2025 the algorithm code was translated to python and heavily refactored to improve readability, maintainability and efficiency. Several issues were fixed. Algorithm code can now be found in a separate repo: https://github.com/marcinbogdanowicz/MedDutiesRevisited
+
+Currently, the algorithm is a standalone Flask application and Django backends uses its API on frontend requests.
+
+## How to run the project
+
+Running the project requires docker and docker compose.
+
+To run the project, clone this repo and run the `run_project.sh` script. The algorithm code will be cloned from the separate repo by the script.
+
+The app will be available at `http://127.0.0.1:8000`.
+
 ## Technologies
 
 - Python 3.11
