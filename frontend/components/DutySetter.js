@@ -238,19 +238,16 @@ export default function DutiesSetter() {
         //saveDutiesHistory(serializedDuties);
     }, []);
 
-    const setDuties = () => {
+    const setDuties = async () => {
         // Cancel previous error messages.
         dismissAlerts();
 
         // Save history.
         saveDutiesHistory();
 
-        // Create worker.
-        const myWorker = new Worker(window.location.origin + "/static/frontend/public/worker.js");
-
         // Show spinner.
         const cancelButton = (
-            <button className="btn btn-danger" onClick={() => {myWorker.terminate(); hideSpinner();}}>Przerwij</button>
+            <button className="btn btn-danger" onClick={() => {hideSpinner();}}>Przerwij</button>
         );
         showSpinner([
             'Układam dyżury...', 
@@ -261,48 +258,48 @@ export default function DutiesSetter() {
         ], cancelButton);
 
         // Send data to worker (it will trigger setting duties).
-        const data = serializeAppData()
-        myWorker.postMessage(data);
+        try {
+            let serialized_data = serializeAppData();
+            const response = await axiosInstance.post('/set_duties/', serialized_data);
+            const data = response.data;
+            console.log(data);
 
-        // Receive result.
-        let result = null;
-        myWorker.onmessage = (event) => {
-            result = event.data;
-            myWorker.terminate();
+            let logContent = null;
+            let logHeader = 'Log';
+            let showLog = false;
 
-            // Transform raw data into list items.
-            const logItems = result.logData;
+            let alertContent = null;
+            let alertHeading = 'Sukces';
+            let alertVariant = 'success';
 
-            // Save response and log in appropriate state.
-            if (result.success) {
-                // Create log, if there are any items.
-                log(logItems, 'Log', false);
-                if (result.allSet) {
-                    const info = <p>Dyżury zostały ułożone.<br />
-                        Pamiętaj, żeby <strong>zapisać</strong> je przed wyjściem.</p>
-                    showAlert(info);
+            if (data.were_any_duties_set) {
+                if (data.were_all_duties_set) {
+                    let msg = "Dyżury zostały ułożone. Pamiętaj, aby zapisać je przed wyjściem."
+                    logContent = [msg];
+                    alertContent = msg;
                 } else {
-                    const settingError = 'Nie udało się ułożyć wszystkich dyżurów.';
-                    const header = 'Nie wyszło...';
-                    const variant = 'warning';
-                    showAlert(settingError, header, variant);
+                    let msg = "Udało się ułożyć jedynie część dyżurów."
+                    logContent = [msg];
+                    alertContent = msg;
+                    alertHeading = 'Było blisko';
+                    alertVariant = 'warning';
                 }
 
                 // Clear non-user-set duties.
                 appData.monthlyDuties.clearDuties();
 
                 // Update duties in monthly duties.
-                for (const dutyData of result.duties) {
+                for (const dutyData of data.duties) {
                     const day = appData.monthlyDuties.getDay(dutyData.day);
                     let doctor = (
-                        appData.doctors.find(doc => doc.pk === dutyData.doctor) 
+                        appData.doctors.find(doc => doc.pk === dutyData.doctor_pk) 
                         || appData.inactiveDoctors.find(
-                        doc => doc.pk === dutyData.doctor));
+                        doc => doc.pk === dutyData.doctor_pk));
                     if (!doctor) {
                         doctor = null;
                     }
                     const duty = new Duty(day, doctor, dutyData.position, 
-                        dutyData.strainPoints, 0, dutyData.setByUser);
+                        dutyData.strain_points, 0, dutyData.set_by_user);
                     appData.monthlyDuties.setDuty(duty);
                 }
 
@@ -315,30 +312,53 @@ export default function DutiesSetter() {
                 // Update statistics.
                 updateStatistics();
 
-                // Hide spinner.
-                hideSpinner();
-
             } else {
-                hideSpinner();
-                const heading = 'Ustawienia uniemożliwiające ułożenie dyżurów';
-                log(logItems, heading);
-                const settingError = ('Dyżury nie zostały ułożone z powodu ustawień lekarzy. ' +
-                    'Sprawdź log, aby zobaczyć szczegółowe informacje.');
-                const header = 'Nie wyszło...';
-                const variant = 'warning';
-                showAlert(settingError, header, variant);
+                logContent = ["Dyżury nie zostały ułożone z powodu ustawień lekarzy.", ...data.errors];
+                alertHeading = 'Nie udało się ułożyć dyżurów';
+                alertContent = 'Preferencje lekarzy nie pozwoliły na ułożenie dyżurów. Sprawdź log, żeby zobaczyć konieczne zmiany.';
+                alertVariant = 'warning';
             }
+            hideSpinner();
+            showAlert(alertContent, alertHeading, alertVariant);
+            log(logContent, 'Log', false);
+
+        } catch(error) {
+            console.log(error);
         }
     }
 
     const serializeAppData = () => {
         const data = {
-            unit: unitData,
-            monthlyDuties: serializeMonthlyDuties(),
-            doctors: serializeDoctors(),
-            prevDutiesData: prevDutiesData,
-            nextDutiesData: nextDutiesData
+            year: appData.monthlyDuties.year,
+            month: appData.monthlyDuties.month,
+            doctors_per_duty: appData.unit.dutyPositions.length,
+            duties: serializeDuties(),
+            doctors: appData.doctors.map(doctor => ({
+                pk: doctor.getPk(),
+                name: doctor.getName(),
+                preferences: {
+                    exceptions: doctor.getExceptions(),
+                    requested_days: doctor.getPreferredDays(),
+                    preferred_weekdays: doctor.getPreferredWeekdays(),
+                    preferred_positions: doctor.getPreferredPositions(),
+                    maximum_accepted_duties: doctor.getMaxNumberOfDuties(),
+                },
+                next_month_duties: doctor.nextMonthDuties.map(duty => duty.day.number),
+                last_month_duties: doctor.prevMonthDuties.map(duty => duty.day.number),
+            }))
         }
+        console.log(data);
+
+        data.duties = data.duties.filter(duty => duty.user_set === true);
+        data.duties.forEach(duty => {
+            let doctor = duty.doctor;
+            duty.doctor_pk = doctor;
+            delete duty.doctor;
+            delete duty.week;
+            delete duty.weekday;
+        });
+
+        console.log(data);
 
         return data;
     }
