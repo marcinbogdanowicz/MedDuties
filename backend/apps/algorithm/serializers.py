@@ -60,6 +60,7 @@ class SetDutiesInputSerializer(serializers.Serializer):
     doctors_per_duty = PositionField()
     doctors = DoctorSerializer(many=True)
     duties = DutySerializer(many=True)
+    locale = serializers.CharField(max_length=5)
 
     class Meta:
-        fields = ['year', 'month', 'doctors_per_duty', 'doctors', 'duties']
+        fields = ['year', 'month', 'doctors_per_duty', 'doctors', 'duties', 'locale']

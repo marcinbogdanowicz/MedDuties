@@ -259,10 +259,10 @@ export default function DutiesSetter() {
 
         // Send data to worker (it will trigger setting duties).
         try {
-            let serialized_data = serializeAppData();
-            const response = await axiosInstance.post('/set_duties/', serialized_data);
+            let serializedData = serializeAppData();
+            serializedData.locale = "pl";
+            const response = await axiosInstance.post('/set_duties/', serializedData);
             const data = response.data;
-            console.log(data);
 
             let logContent = null;
             let logHeader = 'Log';
@@ -347,7 +347,6 @@ export default function DutiesSetter() {
                 last_month_duties: doctor.prevMonthDuties.map(duty => duty.day.number),
             }))
         }
-        console.log(data);
 
         data.duties = data.duties.filter(duty => duty.user_set === true);
         data.duties.forEach(duty => {
@@ -357,8 +356,6 @@ export default function DutiesSetter() {
             delete duty.week;
             delete duty.weekday;
         });
-
-        console.log(data);
 
         return data;
     }

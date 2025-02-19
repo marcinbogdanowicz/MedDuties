@@ -21,7 +21,8 @@ services:
       - ./algorithm/web:/app/web
     environment:
       - PYTHONPATH=/app
-    command: flask --app web.app run --host=0.0.0.0
+      - PYTHONDONTWRITEBYTECODE=1
+    command:  gunicorn -b 0.0.0.0:5000 'web.app:app'
 
   django:
     build:
