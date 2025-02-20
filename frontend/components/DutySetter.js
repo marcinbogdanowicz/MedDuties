@@ -225,8 +225,6 @@ export default function DutiesSetter() {
         // Create first preferences object.
         monthlyDuties.updatePreferences();
 
-        console.log(monthlyDuties.getDuties()); // TODO remove
-
         // Add all the above to state.
         setAppData({
             unit: unit,
@@ -258,11 +256,8 @@ export default function DutiesSetter() {
         // Send data to worker (it will trigger setting duties).
         try {
             let serializedData = getDutySettingPayload();
-            console.log('Algorithm payload', serializedData); // TODO remove
             const response = await axiosInstance.post('/set_duties/', serializedData);
             const data = response.data;
-
-            console.log('Algorithm response', data); // TODO remove
 
             let logContent = null;
 
@@ -288,21 +283,6 @@ export default function DutiesSetter() {
 
                 // Update duties in monthly duties.
                 dispatchDuties(data.duties);
-                console.log('Dispathed data', appData.monthlyDuties.getDuties()); // TODO remove
-                /*
-                for (const dutyData of data.duties) {
-                    const day = appData.monthlyDuties.getDay(dutyData.day);
-                    let doctor = (
-                        appData.doctors.find(doc => doc.pk === dutyData.doctor) 
-                        || appData.inactiveDoctors.find(
-                        doc => doc.pk === dutyData.doctor));
-                    if (!doctor) {
-                        doctor = null;
-                    }
-                    const duty = new Duty(day, doctor, dutyData.position, 
-                        dutyData.strain_points, 0, dutyData.set_by_user);
-                    appData.monthlyDuties.setDuty(duty);
-                }*/
 
                 // Update preferences.
                 appData.monthlyDuties.updatePreferences();
