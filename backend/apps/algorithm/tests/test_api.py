@@ -6,20 +6,15 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 
-class TestAlgorithmAPI(APITestCase):
+class BaseAlgorithmProxyViewTestMixin:
+    api_endpoint_name = None
+    algorithm_endpoint_path = None
+    success_algorithm_response = None
+
     @classmethod
     def setUpTestData(cls):
         cls.user = User.objects.create(username='testUser')
-
-    def setUp(self):
-        self.algorithm_response = {"message": "Success"}
-        responses.post(f"{settings.ALGORITHM_API_URL}/set_duties", json=self.algorithm_response, status=200)
-
-        self.client.force_authenticate(self.user)
-
-    @responses.activate
-    def test_success(self):
-        valid_data = {
+        cls.correctly_formatted_data = {
             "year": 2025,
             "month": 1,
             "doctors_per_duty": 1,
@@ -39,17 +34,34 @@ class TestAlgorithmAPI(APITestCase):
                 },
             ],
             "duties": [
-                {"pk": 1, "doctor_pk": 1, "day": 1, "position": 1, "strain_points": 20, "set_by_user": True},
-                {"pk": None, "doctor_pk": 1, "day": 5, "position": 1, "strain_points": 20, "set_by_user": True},
+                {"pk": 1, "doctor": 1, "day": 1, "position": 1, "strain_points": 20, "set_by_user": True},
+                {"pk": 2, "doctor": None, "day": 5, "position": 1, "strain_points": 20, "set_by_user": True},
             ],
+            "locale": "pl",
         }
-        response = self.client.post(reverse('set_duties'), data=valid_data, format='json')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertDictEqual(response.json(), self.algorithm_response)
 
-    @responses.activate
+    def setUp(self):
+        self.response_mock = responses.RequestsMock(assert_all_requests_are_fired=False)
+        self.response_mock.start()
+        self.response_mock.post(
+            f"{settings.ALGORITHM_API_URL}/{self.algorithm_endpoint_path}",
+            json=self.success_algorithm_response,
+            status=200,
+        )
+
+        self.client.force_authenticate(self.user)
+
+    def tearDown(self):
+        self.response_mock.stop()
+        self.response_mock.reset()
+
+    def test_success(self):
+        response = self.client.post(reverse(self.api_endpoint_name), data=self.correctly_formatted_data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertDictEqual(response.json(), self.success_algorithm_response)
+
     def test_required_fields(self):
-        response = self.client.post(reverse('set_duties'), data={}, format='json')
+        response = self.client.post(reverse(self.api_endpoint_name), data={}, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         response_data = response.json()
         self.assertIn('year', response_data)
@@ -57,3 +69,15 @@ class TestAlgorithmAPI(APITestCase):
         self.assertIn('doctors_per_duty', response_data)
         self.assertIn('doctors', response_data)
         self.assertIn('duties', response_data)
+
+
+class TestAlgorithmSetDutiesAPI(BaseAlgorithmProxyViewTestMixin, APITestCase):
+    api_endpoint_name = 'set_duties'
+    algorithm_endpoint_path = 'set_duties'
+    success_algorithm_response = {"fake_message": "Success"}
+
+
+class TestAlgorithmValidateDutiesAPI(BaseAlgorithmProxyViewTestMixin, APITestCase):
+    api_endpoint_name = 'validate_duties_can_be_set'
+    algorithm_endpoint_path = 'validate_duties_can_be_set'
+    success_algorithm_response = {"errors": []}
