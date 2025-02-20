@@ -308,6 +308,35 @@ export default function DutiesSetter() {
         }
     }
 
+    const checkSettings = async () => {
+        try {
+            let serializedData = getDutySettingPayload();
+            const response = await axiosInstance.post('/validate_duties_can_be_set/', serializedData);
+            const data = response.data;
+
+            const logHeader = 'Raport z weryfikacji ustawień';
+            let logContent = ['Nie wykryto błędów. Grafik zostanie ułożony.'];
+
+            const alertHeader = "Weryfikacja ustawień";
+            let alertContent = <p><strong>Nie wykryto błędów.</strong></p>;
+            let alertVariant = 'info';
+
+            if (data.errors.length) {
+                logContent = ['Wykryto błędy:', ...data.errors];
+                alertContent = <p>Sprawdzono ustawienia i <strong>wykryto nieprawidłowości
+                    </strong>, które uniemożliwiają ułożenie grafiku.<br/><br/>
+                    Wyświetl <strong>log</strong>, aby zobaczyć szczegółowe 
+                    informacje.</p>;
+                alertVariant = 'warning';
+            }
+
+            log(logContent, logHeader);
+            showAlert(alertContent, alertHeader, alertVariant);
+        } catch (error) {
+            console.log(error);
+        }
+    }
+
     const getDutySettingPayload = () => {
         const data = {
             year: appData.monthlyDuties.year,
@@ -790,27 +819,6 @@ export default function DutiesSetter() {
             const header = 'Błąd przesyłania danych';
             const variant = 'danger';
             showAlert(generalError, header, variant);
-        }
-    }
-
-    const checkSettings = () => {
-        const [result, logData] = appData.monthlyDuties.performChecks();
-
-        const header = 'Raport z weryfikacji ustawień';
-        log(logData, header);
-
-        if (!result) {
-            const info = <p>Sprawdzono ustawienia i <strong>wykryto nieprawidłowości
-                </strong>, które mogą uniemożliwić ułożenie grafiku albo spowodować 
-                istotną zmianę ustawień lekarzy przez aplikację.<br/><br/>
-                Wyświetl <strong>log</strong>, aby zobaczyć szczegółowe 
-                informacje.</p>;
-            const header = "Wykryto błędy!";
-            const variant = 'warning';
-            showAlert(info, header, variant);
-        } else {
-            const info = <p><strong>Nie wykryto błędów.</strong></p>
-            showAlert(info);
         }
     }
 

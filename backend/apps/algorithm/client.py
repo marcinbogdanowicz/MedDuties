@@ -41,3 +41,6 @@ class AlgorithmAPIClient:
 
     def set_duties(self, data: dict) -> tuple[dict, int]:
         return self.make_request("set_duties", "POST", data)
+
+    def validate_duties_can_be_set(self, data: dict) -> tuple[dict, int]:
+        return self.make_request("validate_duties_can_be_set", "POST", data)
