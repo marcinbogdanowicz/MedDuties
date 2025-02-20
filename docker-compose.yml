@@ -13,12 +13,25 @@ services:
     ports:
       - 5432:5432
 
+  algorithm:
+    build:
+      context: ./algorithm
+    volumes:
+      - ./algorithm/algorithm:/app/algorithm
+      - ./algorithm/web:/app/web
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONDONTWRITEBYTECODE=1
+    command:  gunicorn -b 0.0.0.0:5000 'web.app:app'
+
   django:
     build:
       context: .
       dockerfile: ./docker/django/Dockerfile.dev
     env_file:
       - ./backend/config/.env.example
+    environment:
+      - USE_DOCKER=yes
     command: python3 backend/manage.py runserver 0.0.0.0:8000
     volumes:
       - ./backend:/app/backend/
@@ -26,6 +39,7 @@ services:
       - "8000:8000"
     depends_on:
       - postgres
+      - algorithm
 
 volumes:
   postgres_data:

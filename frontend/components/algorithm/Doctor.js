@@ -497,7 +497,7 @@ class Doctor {
         if (clearUserSetToo) {
             this.duties = [];
         } else {
-            this.duties = this.duties.filter(duty => duty.isUserSet() === true);
+            this.duties = this.duties.filter(duty => duty.isSetByUser() === true);
         }
     }
 
@@ -506,7 +506,7 @@ class Doctor {
             this.strain = 0;
         } else {
             this.strain = (this.duties
-                .filter(duty => duty.isUserSet() === true)
+                .filter(duty => duty.isSetByUser() === true)
                 .reduce((prevVal, currDuty) => prevVal + currDuty.getStrain(), 0));
         }
     }

@@ -85,7 +85,7 @@ function initialize (data) {
             doctors.find(doctor => doctor.pk === duty.doctor) :
             null;
         const day = monthlyDuties.getDays().find(day => day.number === duty.day);
-        return new Duty(day, doctor, duty.position, duty.strain_points, duty.pk, duty.user_set);
+        return new Duty(day, doctor, duty.position, duty.strain_points, duty.pk, duty.set_by_user);
     });
     monthlyDuties.addDuties(duties);
     
@@ -115,7 +115,7 @@ function initialize (data) {
                 duty.position, 
                 duty.strain_points, 
                 duty.pk, 
-                duty.user_set
+                duty.set_by_user
             );
         })
     );
@@ -142,7 +142,7 @@ function initialize (data) {
                 duty.position, 
                 duty.strain_points, 
                 duty.pk, 
-                duty.user_set
+                duty.set_by_user
             );
         })
     );

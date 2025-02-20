@@ -59,17 +59,14 @@ class UserSerializer(serializers.ModelSerializer):
         validated_data = attrs
 
         # Check permissions if request is given.
-        request = self.context.get('request', None)
+        request = self.context.get('request')
         if request:
-            new_user_is_head_doctor = validated_data.get('is_head_doctor', None)
+            new_user_is_head_doctor = validated_data.get('is_head_doctor')
 
-            print(request.user)
-            print(request.auth)
-            print(new_user_is_head_doctor)
             if (request.user.is_anonymous or not request.user.is_head_doctor) and not new_user_is_head_doctor:
                 raise exceptions.PermissionDenied("Only head users can create non-head users' accounts.")
 
-            unit = validated_data.get('unit', None)
+            unit = validated_data.get('unit')
             if unit is not None and unit.owner != request.user and not new_user_is_head_doctor:
                 raise exceptions.PermissionDenied(
                     ("User cannot add to user instance unit " + "different than his own.")
@@ -97,7 +94,7 @@ class DoctorSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         request = self.context['request']
-        new_unit = validated_data.get('unit', None)
+        new_unit = validated_data.get('unit')
         if (request.method == "PUT" or request.method == "PATCH") and new_unit and new_unit != instance.unit:
             raise exceptions.PermissionDenied("Doctors cannot change unit.")
 
@@ -112,13 +109,13 @@ class DoctorSerializer(serializers.ModelSerializer):
         validated_data = attrs
 
         # Check permissions if request is given.
-        request = self.context.get('request', None)
+        request = self.context.get('request')
         if request:
 
             if not request.user.is_head_doctor:
                 raise exceptions.PermissionDenied("Only head users can create and modify doctors.")
 
-            impersonated_user = validated_data.get('impersonated_user', None)
+            impersonated_user = validated_data.get('impersonated_user')
             if impersonated_user is not None and impersonated_user.unit != request.user.unit:
                 raise exceptions.PermissionDenied(
                     "Impersonated user cannot be of a different unit " + "than his doctor instance."
@@ -162,11 +159,11 @@ class DoctorMonthlyDataSerializer(serializers.ModelSerializer):
 
         # Check permissions if request is given.
         # Standard validation will handle 'required' requirement.
-        request = self.context.get('request', None)
+        request = self.context.get('request')
         if request:
 
-            doctor = validated_data.get('doctor', None)
-            monthly_duties = validated_data.get('monthly_duties', None)
+            doctor = validated_data.get('doctor')
+            monthly_duties = validated_data.get('monthly_duties')
 
             # Get values not given with PATCH request from instance.
             if request.method == 'PATCH':
@@ -199,7 +196,7 @@ class DutySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Duty
-        fields = ('pk', 'day', 'weekday', 'week', 'position', 'strain_points', 'doctor', 'monthly_duties', 'user_set')
+        fields = ('pk', 'day', 'position', 'strain_points', 'doctor', 'monthly_duties', 'set_by_user')
 
     def create(self, validated_data):
         # Set user as owner during creation.
@@ -214,23 +211,19 @@ class DutySerializer(serializers.ModelSerializer):
 
         # Check permissions if request is given.
         # Standard validation will handle 'required' requirement.
-        request = self.context.get('request', None)
+        request = self.context.get('request')
         if request:
 
             if not request.user.is_head_doctor:
-                raise exceptions.PermissionDenied(("Only head doctors can create or modify " + "duties."))
+                raise exceptions.PermissionDenied("Only head doctors can create or modify duties.")
 
-            doctor = validated_data.get('doctor', None)
+            doctor = validated_data.get('doctor')
             if doctor is not None and doctor.owner != request.user:
-                raise exceptions.PermissionDenied(
-                    ("User cannot create nor modify duties " + "for doctor he does not own.")
-                )
+                raise exceptions.PermissionDenied("User cannot create nor modify duties for doctor he does not own.")
 
-            monthly_duties = validated_data.get('monthly_duties', None)
+            monthly_duties = validated_data.get('monthly_duties')
             if monthly_duties is not None and monthly_duties.owner != request.user:
-                raise exceptions.PermissionDenied(
-                    ("User cannot create nor modify duties " + "for schedule he does not own.")
-                )
+                raise exceptions.PermissionDenied("User cannot create nor modify duties for schedule he does not own.")
 
         return validated_data
 
@@ -242,14 +235,12 @@ class DutyNestedSerializer(DutySerializer):
         fields = (
             'pk',
             'day',
-            'weekday',
-            'week',
             'position',
             'doctor',
             'strain_points',
             'monthly_duties',
             'owner',
-            'user_set',
+            'set_by_user',
         )
         extra_kwargs = {
             'pk': {'read_only': False, 'required': False},
@@ -262,10 +253,10 @@ class DutyNestedSerializer(DutySerializer):
 
         # Check permissions if request is given.
         # Standard validation will handle 'required' requirement.
-        request = self.context.get('request', None)
+        request = self.context.get('request')
         if request:
 
-            doctor = validated_data.get('doctor', None)
+            doctor = validated_data.get('doctor')
             if doctor is not None and doctor.owner != request.user:
                 raise exceptions.PermissionDenied(
                     ("User cannot create or modify duties " + "for doctor he does not own.")
@@ -303,10 +294,10 @@ class DoctorMonthlyDataNestedSerializer(DoctorMonthlyDataSerializer):
 
         # Check permissions if request is given.
         # Standard validation will handle 'required' requirement.
-        request = self.context.get('request', None)
+        request = self.context.get('request')
         if request:
 
-            doctor = validated_data.get('doctor', None)
+            doctor = validated_data.get('doctor')
             if doctor is not None and request.user.unit.owner != doctor.owner:
                 raise exceptions.PermissionDenied(
                     ("User can create or modify monthly settings " + "only for doctors of his unit.")
@@ -329,7 +320,7 @@ class MonthlyDutiesSerializer(serializers.ModelSerializer):
         {"doctor":2, ...}
     ],
     "duties":[
-        {"day":15,"position":1,"doctor":1,"user_set":false},
+        {"day":15,"position":1,"doctor":1,"set_by_user":false},
         {"day":12, ...},
     ]}
     """
@@ -360,10 +351,10 @@ class MonthlyDutiesSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # Check if doctor_data and duties are provided.
         # If so, extract them from validated_data.
-        doctors_data = validated_data.get('doctor_data', None)
+        doctors_data = validated_data.get('doctor_data')
         if doctors_data:
             doctors_data = validated_data.pop('doctor_data')
-        duties = validated_data.get('duties', None)
+        duties = validated_data.get('duties')
         if duties:
             duties = validated_data.pop('duties')
 
@@ -409,10 +400,10 @@ class MonthlyDutiesSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         # Check if doctor_data and duties are provided.
         # If so, extract them from validated_data.
-        doctors_data = validated_data.get('doctor_data', None)
+        doctors_data = validated_data.get('doctor_data')
         if doctors_data:
             doctors_data = validated_data.pop('doctor_data')
-        duties = validated_data.get('duties', None)
+        duties = validated_data.get('duties')
         if duties:
             duties = validated_data.pop('duties')
 

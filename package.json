@@ -4,7 +4,7 @@
   "description": "MedDuties App",
   "private": true,
   "scripts": {
-    "build": "webpack --config webpack.config.js",
+    "build": "rm -rf backend/apps/frontend/static/frontend/public/* && webpack --config webpack.config.js",
     "test": "jest --verbose"
   },
   "author": "MB",

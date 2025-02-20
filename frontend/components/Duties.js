@@ -208,7 +208,7 @@ export default function Duties() {
                     position: position,
                     doctor: null,
                     strain_points: d.strainPoints,
-                    user_set: false
+                    set_by_user: false
                 });
             });
         })

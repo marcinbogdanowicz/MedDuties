@@ -8,7 +8,6 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / "config/.env.example")
-print(os.environ.get("SECRET_KEY"))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
@@ -36,6 +35,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt.token_blacklist",
     "apps.api",
     "apps.frontend",
+    "apps.algorithm",
 ]
 
 MIDDLEWARE = [
@@ -156,3 +156,7 @@ CORS_ALLOW_ALL_ORIGINS = False
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / "staticfiles"
+
+MAX_DUTIES_PER_MONTH = 16
+
+ALGORITHM_API_URL = 'http://algorithm:5000'

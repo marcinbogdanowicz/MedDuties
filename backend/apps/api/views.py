@@ -12,7 +12,6 @@ from apps.api.serializers import (
     UserSerializer,
 )
 from django.shortcuts import get_object_or_404
-from django.utils.translation import gettext as _
 from rest_framework import exceptions, permissions, status
 from rest_framework.generics import (
     CreateAPIView,
@@ -41,7 +40,6 @@ class CreateUserView(CreateAPIView):
     def get_authenticators(self):
         request_body = json.loads(self.request.body)
         creating_head_user = request_body.get('is_head_user', False)
-        print(creating_head_user)
         if creating_head_user:
             return []
         else:

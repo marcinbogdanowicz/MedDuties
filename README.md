@@ -2,10 +2,33 @@
 
 ## Introduction
 
-MedDuties is a complete web app designed for creating schedules of medical shifts.
-The app is based on demands of Polish medical system and is designed for use in hospital units.
-I decided to undertake the issue of setting fair shifts, based on one of my relatives
-experience of biased and unnecessarily strainful schedules. This is also my first portfolio project.
+MedDuties is a web app designed for creating duties schedules for hospital units. By implementing a custom best-first search AI algorithm, it reduces the task of creating a new schedule from hours to seconds.
+
+The app was created in 2022/23. 
+
+In early 2025 I translated the algorithm code to Python, refactored it and moved it to a microservice. Algorithm code can now be found in [a separate repo](https://github.com/marcinbogdanowicz/MedDutiesRevisited). The Django app code structure was refactored in the process and integration with the microservice was added. Otherwise the backend code remains unchanged.
+
+## Duty-setting principles and algorithm overview
+
+These topics are described in detail in [the algorithm microservice documentation](https://github.com/marcinbogdanowicz/MedDutiesRevisited?tab=readme-ov-file#duty-setting-principles).
+
+## How to run the project
+
+Running the project requires docker and docker compose.
+
+To run the project, clone this repo and run the following script:
+
+ ```
+ ./run_project.sh --reset
+ ```
+
+ This will clone the nested [repo](https://github.com/marcinbogdanowicz/MedDutiesRevisited) with algorithm microservice and make migrations.
+ 
+ The app will be available at `http://127.0.0.1:8000`.
+
+ Other convenience scripts:
+ - `./reset.sh` - recreates an empty database
+ - `./fetch_algorithm.sh` - refetches algorithm repo
 
 ## Technologies
 
@@ -22,23 +45,3 @@ experience of biased and unnecessarily strainful schedules. This is also my firs
 - js-combinatorics 2.1.1
 - axios 1.1.3
 - xlsx 0.19.1
-
-## Features
-
-Implemented:
-1. Creating unit head account,
-2. Creating unit and doctors' profiles,
-3. Doctors' preferences, incl.: excluded & preferred days, preferred weekdays, positions (Shift-head, second, third), max no of duties / month,
-4. Automated schedule creation using best-first search AI algorithm,
-5. Keeps track of user-set duties and sets only remaining ones,
-6. Using randomness for creating original schedules based on same prefrences,
-7. Month's statistics for schedule-evaluation,
-8. Storing schedule in DB,
-9. Saving as .xlsx on disk,
-10. Global statistics for analyzing doctors' recent workload,
-11. Manual & quick start.
-
-To be implemented:
-1. Doctors' accounts for letting them enter their preferences and check on new schedules,
-2. Holidays statistics for analyzing doctors' load on certain holidays,
-3. Possibly other tools for managing: vacations, daily presence/absence, clinic schedule, nurses schedule etc.

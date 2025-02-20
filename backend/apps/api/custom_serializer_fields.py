@@ -65,10 +65,10 @@ class IntegerListField(serializers.Field):
 
     def to_internal_value(self, data):
         if isinstance(data, str):
-            regex = re.compile('^(\d{1,2} )*(\d{1,2}){0,1}$')
+            regex = re.compile(r'^(\d{1,2} )*(\d{1,2}){0,1}$')
             match = regex.match(data)
             if match:
-                data = re.findall('\d{1,2}', data)
+                data = re.findall(r'\d{1,2}', data)
                 data = list(map(int, data))
                 return data
         raise serializers.ValidationError('Nieprawidłowy format danych. Oczekiwano: "1 2 7 ... 10 26..."')
@@ -86,7 +86,7 @@ class MonthAndYearField(serializers.Field):
 
     def to_internal_value(self, data):
         if isinstance(data, str):
-            regex = re.compile('^\d{1,2}\/\d{4}$')
+            regex = re.compile(r'^\d{1,2}\/\d{4}$')
             match = regex.match(data)
             if match:
                 data = re.split('/', data)

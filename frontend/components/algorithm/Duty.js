@@ -13,10 +13,10 @@ class Duty {
         this.strainPoints = strainPoints;
         this.pk = pk;
         this.setByUser = setByUser;
-        
+
         this.getPk = this.getPk.bind(this);
         this.userSet = this.userSet.bind(this);
-        this.isUserSet = this.isUserSet.bind(this);
+        this.isSetByUser = this.isSetByUser.bind(this);
         this.setDoctor = this.setDoctor.bind(this);
         this.copy = this.copy.bind(this);
         this.getDoctor = this.getDoctor.bind(this);
@@ -35,7 +35,7 @@ class Duty {
         this.setByUser = mode;
     }
 
-    isUserSet() {
+    isSetByUser() {
         return this.setByUser;
     }
 
