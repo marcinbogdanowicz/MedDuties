@@ -1,5 +1,4 @@
 import { range, getNumberOfWeekdaysInMonth, getWeekday } from './utils';
-import EvaluationChart from './EvaluationChart';
 
 
 var MAX_NUMBER_OF_DUTIES_PER_MONTH = (month, year) => Math.floor(new Date(year, month, 0).getDate() / 2);
@@ -18,7 +17,6 @@ var MODIFIER_SATURDAY_IF_ONE_WEEKEND = -30;
 var MODIFIER_NEW_WEEKEND = 200;
 
 var MODIFIER_EACH_WEEKEND = 40;
-var MODIFIER_DUTY_LEFT = -10;
 
 export var modifiers = {
     DUTY_IMPOSSIBLE: MODIFIER_DUTY_IMPOSSIBLE,
@@ -51,11 +49,6 @@ class Doctor {
     prevMonthDuties;
     nextMonthDuties;
 
-    #maxNumberOfDutiesInit;
-    #exceptionsInit;
-    #preferredDaysInit;
-    #preferredWeekdaysInit;
-    #preferredPositionsInit;
     #year;
     #month;
 
@@ -76,14 +69,6 @@ class Doctor {
         this.prevMonthDuties = [];
         this.nextMonthDuties = [];
 
-        // Private properties.
-        // Initial properties - set be user, not affected by changes
-        // made by schedule class algorithm during execution.
-        this.#maxNumberOfDutiesInit = MAX_NUMBER_OF_DUTIES_PER_MONTH;
-        this.#exceptionsInit = [];
-        this.#preferredDaysInit = [];
-        this.#preferredWeekdaysInit = range(7);
-        this.#preferredPositionsInit = unit.dutyPositions;
         this.#year = year;
         this.#month = month;
 
@@ -94,13 +79,9 @@ class Doctor {
         this.getName = this.getName.bind(this);
         this.addPrevMonthDuty = this.addPrevMonthDuty.bind(this);
         this.addNextMonthDuty = this.addNextMonthDuty.bind(this);
-        this.evaluateDuties = this.evaluateDuties.bind(this);
         this.setDuty = this.setDuty.bind(this);
         this.removeDuty = this.removeDuty.bind(this);
         this.getDuties = this.getDuties.bind(this);
-        this.getNumberOfDuties = this.getNumberOfDuties.bind(this);
-        this.getWeekendsOnDuty = this.getWeekendsOnDuty.bind(this);
-        this.getNumberOfDutiesOnWeekends = this.getNumberOfDutiesOnWeekends.bind(this)
         this.setMaxNumberOfDuties = this.setMaxNumberOfDuties.bind(this);
         this.getMaxNumberOfDuties = this.getMaxNumberOfDuties.bind(this);
         this.getNumberOfDutiesLeft = this.getNumberOfDutiesLeft.bind(this);
@@ -118,16 +99,7 @@ class Doctor {
         this.getPreferredPositions = this.getPreferredPositions.bind(this);
         this.lockPreferences = this.lockPreferences.bind(this);
         this.isLocked = this.isLocked.bind(this);
-        this.restoreInit = this.restoreInit.bind(this);
-        this.restoreMaxDuties = this.restoreMaxDuties.bind(this);
-        this.restoreExceptions = this.restoreExceptions.bind(this);
-        this.restorePreferredDays = this.restorePreferredDays.bind(this);
-        this.restorePreferredPositions = this.restorePreferredPositions.bind(this);
-        this.restorePreferredWeekdays = this.restorePreferredWeekdays.bind(this);
         this.getStatistics = this.getStatistics.bind(this);
-
-        this._getPreviousMonthModfiers = this._getPreviousMonthModfiers.bind(this);
-        this._getNextMonthModfiers = this._getNextMonthModfiers.bind(this);
     }
 
     getPk() {
@@ -154,220 +126,6 @@ class Doctor {
         this.nextMonthDuties.push(duty);
     }
 
-    evaluateDuties(duties, position, maxDutiesFactor=this.getMaxNumberOfDuties()) {
-        const maxDuties = this.getMaxNumberOfDuties();
-        const numberOfDuties = this.getNumberOfDuties(duties);
-        const dutiesLeft = maxDuties - numberOfDuties;
-        if (dutiesLeft <= 0) {
-            return null;
-        }
-
-        const days = [...duties.keys()];
-
-        const evaluationChart = new EvaluationChart(days, this);
-
-        this._getPreviousMonthModfiers(evaluationChart);
-        this._getNextMonthModfiers(evaluationChart);
-
-        const whoIsOnDuty = (dayNumber) => {
-            const day = days.find(d => d.number === dayNumber);
-            const result = {};
-            if (day) {
-                Object.entries(duties.get(day)).forEach(([position, duty]) => {
-                    result[position] = duty.getDoctor();
-                });
-            } else {
-                Object.entries(duties.get(days[0])).forEach(([position, duty]) => {
-                    result[position] = null;
-                });
-            }
-            return result;
-        }
-
-        // Conditions that will not change during looping.
-        const iDontTakeDutiesOnWeekends = !(
-            (5 in this.preferredWeekdays) || (6 in this.preferredWeekdays));
-        const weekendsIHaveDutiesOn = this.getWeekendsOnDuty(duties);
-        const iDontHaveDutyOnThisWeekend = (day) => (
-            new Set([...weekendsIHaveDutiesOn, day.week]).size 
-            > weekendsIHaveDutiesOn.length);
-        const dutiesLeftModifier = numberOfDuties ? ((dutiesLeft - maxDutiesFactor) * MODIFIER_DUTY_LEFT) : (20 * MODIFIER_DUTY_LEFT);
-
-        for (const day of days) {
-
-            const today = day.number;
-            const itIsFriday = day.weekday === 4;
-            const itIsThursday = day.weekday === 3;
-            const itIsSunday = day.weekday === 6;
-            const itIsWeekend = [4,5,6].includes(day.weekday);
-
-            const dutyImpossible = evaluationChart.getDayStrain(today) >= 10000;
-            const iMadeExceptionForToday = this.getExceptions().includes(today);
-            const iDontTakeDutiesOnThisWeekday = (
-                !this.getPreferredWeekdays().includes(day.weekday));
-            const iDontTakeDutiesOnThisPosition = (
-                !this.getPreferredPositions().includes(position));
-            const dutyOnThisPositionTaken = (
-                Boolean(duties.get(day)[position].getDoctor()) === true);
-            const iAmOnDutyOnAnyPosition = Object.values(whoIsOnDuty(today)).some(entry => {
-                    if (entry) {
-                        return entry.pk === this.pk;
-                    } 
-                    return false;
-            });
-            const iAmNotOnDutyTwoDaysAgo = !(Object.values(whoIsOnDuty(today - 2)).some(entry => {
-                if (entry) {
-                    return entry.pk === this.pk;
-                }
-                return false;
-            }));
-
-            if (dutyImpossible) {
-                continue;
-            }
-
-            if (iMadeExceptionForToday) {
-                evaluationChart.modifyPoints(today, MODIFIER_DUTY_IMPOSSIBLE);
-            }
-
-            if (iDontTakeDutiesOnThisWeekday) {
-                evaluationChart.modifyPoints(today, MODIFIER_DUTY_IMPOSSIBLE);
-            }
-
-            if (iDontTakeDutiesOnThisPosition) {
-                evaluationChart.modifyPoints(today, MODIFIER_DUTY_IMPOSSIBLE);
-            }
-
-            if (dutyOnThisPositionTaken) {
-                evaluationChart.modifyPoints(today, MODIFIER_DUTY_IMPOSSIBLE);
-            }
-
-            if (iAmOnDutyOnAnyPosition) {
-                // Mark decreasing impact on following and preceding days.
-                // Prevent double duties.
-                evaluationChart.modifyPoints(today - 4, MODIFIER_FOUR_DAYS_APART);
-                evaluationChart.modifyPoints(today - 3, MODIFIER_THREE_DAYS_APART);
-                evaluationChart.modifyPoints(today - 2, MODIFIER_TWO_DAYS_APART);
-                evaluationChart.modifyPoints(today - 1, MODIFIER_DUTY_IMPOSSIBLE);
-                evaluationChart.modifyPoints(today, MODIFIER_DUTY_IMPOSSIBLE);
-                evaluationChart.modifyPoints(today + 1, MODIFIER_DUTY_IMPOSSIBLE);
-                evaluationChart.modifyPoints(today + 2, MODIFIER_TWO_DAYS_APART);
-                evaluationChart.modifyPoints(today + 3, MODIFIER_THREE_DAYS_APART);
-                evaluationChart.modifyPoints(today + 4, MODIFIER_FOUR_DAYS_APART);
-
-                if (itIsFriday) {
-                    // Sunday is more attractive.
-                    evaluationChart.modifyPoints(today + 2, MODIFIER_FRI_SUN);
-                }
-
-                if (itIsThursday) {
-                    // Don't take duty on saturday, it will ruin your weekend!
-                    evaluationChart.modifyPoints(today + 2, MODIFIER_THU_SAT);
-                }
-
-                continue;
-            }
-
-            if (itIsThursday && iDontTakeDutiesOnWeekends) {
-                // Day off after thursday wouldn't make any difference.
-                evaluationChart.modifyPoints(today, MODIFIER_THURSDAY_IS_ORDINARY);
-            }
-
-            if (itIsSunday && iAmNotOnDutyTwoDaysAgo) {
-                evaluationChart.modifyPoints(today, MODIFIER_DONT_STEAL_SUNDAYS);
-            }
-
-            if (itIsWeekend && iDontHaveDutyOnThisWeekend(day)) {
-                const modifier = (
-                    (weekendsIHaveDutiesOn.length + 1) * MODIFIER_NEW_WEEKEND);
-                evaluationChart.modifyPoints(today, modifier);
-            }
-
-            // Apply modifier for duties left.
-            evaluationChart.modifyPoints(today, dutiesLeftModifier);
-        }
-
-        return evaluationChart;
-    }
-
-    _getPreviousMonthModfiers(evaluationChart) {
-        // Applies impact from closing duties of previous month.
-        // Same modifiers as in evaluate duties method are used.
-        const prevDuties = this.prevMonthDuties;
-        const prevMonth = this.#month === 1 ? 12 : this.#month-1;
-        const prevYear = this.#month === 1 ? this.#year-1 : this.#year;
-        const prevMonthLen = new Date(prevYear, prevMonth, 0).getDate();
-
-        const myPrevDutyDates = [...new Set(
-            prevDuties
-            .filter(d => {
-                if (d.doctor) {
-                    return d.doctor.pk === this.pk;
-                }
-                return false;
-            })
-            .map(d => d.day.number)
-        )];
-        if (!myPrevDutyDates.length) {
-            return;
-        }
-        myPrevDutyDates.sort();
-
-        const modifier = {
-            3: MODIFIER_DUTY_IMPOSSIBLE,
-            2: MODIFIER_TWO_DAYS_APART,
-            1: MODIFIER_THREE_DAYS_APART,
-            0: MODIFIER_FOUR_DAYS_APART
-        };
-
-        for (const date of myPrevDutyDates) {
-            if ((prevMonthLen - date) < 4) {
-                const daysAffected = 4 - (prevMonthLen - date);
-                for (const i of range(1, daysAffected+1)) {
-                    evaluationChart.modifyPoints(i, modifier[daysAffected - i]);
-                }
-            }
-        }
-    }
-
-    _getNextMonthModfiers(evaluationChart) {
-        // Applies impact from opening duties of next month.
-        // Same modifiers as in evaluate duties method are used.
-        const nextDuties = this.nextMonthDuties;
-        const thisMonthLength = new Date(this.#year, this.#month, 0).getDate();
-
-        const myNextDutyDates = [...new Set(
-            nextDuties
-            .filter(d => {
-                if (d.doctor) {
-                    return d.doctor.pk === this.pk;
-                }
-                return false;
-            })
-            .map(d => d.day.number)
-        )];
-        if (!myNextDutyDates.length) {
-            return;
-        }
-        myNextDutyDates.sort();
-
-        const modifier = {
-            3: MODIFIER_DUTY_IMPOSSIBLE,
-            2: MODIFIER_TWO_DAYS_APART,
-            1: MODIFIER_THREE_DAYS_APART,
-            0: MODIFIER_FOUR_DAYS_APART
-        };
-
-        for (const date of myNextDutyDates) {
-            if (date < 5) {
-                const daysAffected = 5 - date;
-                for (const i of range(daysAffected)) {
-                    evaluationChart.modifyPoints(thisMonthLength-i, modifier[daysAffected - i - 1]);
-                }
-            }
-        }
-    }
-
     setDuty(duty) {
         this.duties.push(duty);
     }
@@ -385,71 +143,9 @@ class Doctor {
         return this.duties;
     }
 
-    getNumberOfDuties(duties=null) {
-        if (!duties) {
-            return this.duties.length;
-        }
-
-        let myDuties = (
-            [...duties.values()]
-            .map(elem => Object.values(elem))
-            .flat()
-            .filter(duty => {
-                const doctor = duty.getDoctor();
-                if (doctor) {
-                    return doctor.pk === this.pk;
-                }
-                return false;
-            })
-            .map(duty => duty.day.number)
-        );
-
-        const thisDutyDates = this.duties.map(d => d.day.number);
-        myDuties = myDuties.filter(date => !thisDutyDates.includes(date));
-
-        return (myDuties.length + thisDutyDates.length);
-    }
-
-    getWeekendsOnDuty(duties=null) {
-        let weekendsOnDuty = new Set();
-        let myDuties = [];
-
-        if (!duties) {
-            myDuties = this.duties;
-        } else {
-            myDuties = (
-                [...duties.values()]
-                .map(elem => Object.values(elem))
-                .flat()
-                .filter(duty => {
-                    const doctor = duty.getDoctor();
-                    if (doctor) {
-                        return doctor.pk === this.pk;
-                    }
-                    return false;
-                })
-            );
-        }
-
-        myDuties.forEach(duty => {
-            if (duty.day.category === 'weekend') {
-                weekendsOnDuty.add(duty.day.week);
-            }
-        });
-        return Array.from(weekendsOnDuty);
-    }
-
-    getNumberOfDutiesOnWeekends() {
-        return this.duties.filter(
-            duty => duty.day.category === 'weekend').length;
-    }
-
-    setMaxNumberOfDuties(number, saveInit=false) {
-        if (saveInit) {
-            this.#maxNumberOfDutiesInit = number;
-        }
+    setMaxNumberOfDuties(number) {
         this.maxNumberOfDuties = number;
-        this.#updateMaxNumberOfDuties(saveInit);
+        this.#updateMaxNumberOfDuties();
     }
 
     getMaxNumberOfDuties() {
@@ -506,11 +202,8 @@ class Doctor {
         }
     }
 
-    setExceptions(exceptionList, saveInit=false) {
+    setExceptions(exceptionList) {
         exceptionList.sort();
-        if (saveInit) {
-            this.#exceptionsInit = exceptionList;
-        }
         this.exceptions = exceptionList;
     }
 
@@ -518,33 +211,27 @@ class Doctor {
         return this.exceptions;
     }
 
-    setPreferredDays(daysList, saveInit=false) {
+    setPreferredDays(daysList) {
         daysList.sort();
-        if (saveInit) {
-            this.#preferredDaysInit = daysList;
-        }
         this.preferredDays = daysList;
-        this.#updateMaxNumberOfDuties(saveInit);
+        this.#updateMaxNumberOfDuties();
     }
 
     getPreferredDays() {
         return this.preferredDays;
     }
 
-    setPreferredWeekdays(weekdaysList, saveInit=false) {
+    setPreferredWeekdays(weekdaysList) {
         weekdaysList.sort();
-        if (saveInit) {
-            this.#preferredWeekdaysInit = weekdaysList;
-        }
         this.preferredWeekdays = weekdaysList;
-        this.#updateMaxNumberOfDuties(saveInit);
+        this.#updateMaxNumberOfDuties();
     }
 
     getPreferredWeekdays() {
         return this.preferredWeekdays;
     }
 
-    #updateMaxNumberOfDuties(saveInit) {
+    #updateMaxNumberOfDuties() {
         /* It may be a problem when setting duties, if a doctor has a high 
         max number of duties and there are not as many weekdays in month 
         which he accepts.
@@ -570,17 +257,14 @@ class Doctor {
         const acceptedDaysInMonth = preferredWeekdaysInMonth + preferredDaysOnUnpreferredWeekdays
 
         if (this.maxNumberOfDuties > acceptedDaysInMonth) {
-            this.setMaxNumberOfDuties(acceptedDaysInMonth, saveInit);
+            this.setMaxNumberOfDuties(acceptedDaysInMonth);
         } else if (this.maxNumberOfDuties < this.preferredDays.length || !this.preferredWeekdays.length) {
-            this.setMaxNumberOfDuties(this.preferredDays.length, saveInit);
+            this.setMaxNumberOfDuties(this.preferredDays.length);
         }
     }
 
-    setPreferredPositions(positionList,saveInit=false) {
+    setPreferredPositions(positionList) {
         positionList.sort();
-        if (saveInit) {
-            this.#preferredPositionsInit = positionList;
-        }
         this.preferredPositions = positionList;
     }
 
@@ -594,34 +278,6 @@ class Doctor {
 
     isLocked() {
         return this.locked;
-    }
-
-    restoreInit() {
-        this.restoreMaxDuties();
-        this.restoreExceptions();
-        this.restorePreferredDays();
-        this.restorePreferredPositions();
-        this.restorePreferredWeekdays();
-    }
-
-    restoreMaxDuties() {
-        this.maxNumberOfDuties = this.#maxNumberOfDutiesInit;
-    }
-
-    restoreExceptions() {
-        this.exceptions = [...this.#exceptionsInit];
-    }
-
-    restorePreferredDays() {
-        this.preferredDays = [...this.#preferredDaysInit];
-    }
-
-    restorePreferredPositions() {
-        this.preferredPositions = [...this.#preferredPositionsInit];
-    }
-
-    restorePreferredWeekdays() {
-        this.preferredWeekdays = [...this.#preferredWeekdaysInit];
     }
 
     getStatistics() {

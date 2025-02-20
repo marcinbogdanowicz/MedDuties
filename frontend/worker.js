@@ -40,27 +40,27 @@ function initialize (data) {
                 d.setStrain(doctorData.strain);
             }
             if (doctorData.max_number_of_duties) {
-                d.setMaxNumberOfDuties(doctorData.max_number_of_duties, true);
+                d.setMaxNumberOfDuties(doctorData.max_number_of_duties);
             }
             if (doctorData.exceptions) {
                 const exceptions = doctorData.exceptions.split(' ').map(
                     exc => parseInt(exc));
-                d.setExceptions(exceptions, true);
+                d.setExceptions(exceptions);
             }
             if (doctorData.preferred_days) {
                 const days = doctorData.preferred_days.split(' ').map(
                     day => parseInt(day));
-                d.setPreferredDays(days, true);
+                d.setPreferredDays(days);
             }
             if (doctorData.preferred_positions) {
                 const positions = doctorData.preferred_positions.split(' ').map(
                     pos => parseInt(pos));
-                d.setPreferredPositions(positions, true);
+                d.setPreferredPositions(positions);
             }
             if (doctorData.preferred_weekdays) {
                 const weekdays = doctorData.preferred_weekdays.split(' ').map(
                     weekday => parseInt(weekday));
-                d.setPreferredWeekdays(weekdays, true);
+                d.setPreferredWeekdays(weekdays);
             }
             if (doctorData.locked) {
                 d.lockPreferences();
