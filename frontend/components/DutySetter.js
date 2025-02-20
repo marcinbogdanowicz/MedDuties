@@ -259,14 +259,11 @@ export default function DutiesSetter() {
 
         // Send data to worker (it will trigger setting duties).
         try {
-            let serializedData = serializeAppData();
-            serializedData.locale = "pl";
+            let serializedData = getDutySettingPayload();
             const response = await axiosInstance.post('/set_duties/', serializedData);
             const data = response.data;
 
             let logContent = null;
-            let logHeader = 'Log';
-            let showLog = false;
 
             let alertContent = null;
             let alertHeading = 'Sukces';
@@ -327,25 +324,14 @@ export default function DutiesSetter() {
         }
     }
 
-    const serializeAppData = () => {
+    const getDutySettingPayload = () => {
         const data = {
             year: appData.monthlyDuties.year,
             month: appData.monthlyDuties.month,
             doctors_per_duty: appData.unit.dutyPositions.length,
             duties: serializeDuties(),
-            doctors: appData.doctors.map(doctor => ({
-                pk: doctor.getPk(),
-                name: doctor.getName(),
-                preferences: {
-                    exceptions: doctor.getExceptions(),
-                    requested_days: doctor.getPreferredDays(),
-                    preferred_weekdays: doctor.getPreferredWeekdays(),
-                    preferred_positions: doctor.getPreferredPositions(),
-                    maximum_accepted_duties: doctor.getMaxNumberOfDuties(),
-                },
-                next_month_duties: doctor.nextMonthDuties.map(duty => duty.day.number),
-                last_month_duties: doctor.prevMonthDuties.map(duty => duty.day.number),
-            }))
+            doctors: serializeDoctors(),
+            locale: 'pl'
         }
 
         data.duties = data.duties.filter(duty => duty.user_set === true);
@@ -356,34 +342,6 @@ export default function DutiesSetter() {
             delete duty.week;
             delete duty.weekday;
         });
-
-        return data;
-    }
-
-    const serializeMonthlyDuties = () => {
-        const month = appData.monthlyDuties.month;
-        const year = appData.monthlyDuties.year;
-        const data = {
-            pk: appData.monthlyDuties.getPk(),
-            monthandyear: `${month}/${year}`
-        }
-        if (appData.doctors.length) {
-            data.doctor_data = appData.doctors.map(doctor => ({
-                pk: doctor.getSettingsPk(),
-                doctor: doctor.getPk(),
-                strain: doctor.getStrain(),
-                max_number_of_duties: doctor.getMaxNumberOfDuties(),
-                exceptions: doctor.getExceptions().join(' '),
-                preferred_days: doctor.getPreferredDays().join(' '),
-                preferred_weekdays: doctor.getPreferredWeekdays().join(' '),
-                preferred_positions: doctor.getPreferredPositions().join(' '),
-                locked: doctor.isLocked()
-            }));
-        }
-        const duties = serializeDuties();
-        if (duties.length) {
-            data.duties = duties;
-        }
 
         return data;
     }
@@ -416,17 +374,19 @@ export default function DutiesSetter() {
     }
 
     const serializeDoctors = () => {
-        const data = [];
-        for (const doctor of appData.doctors) {
-            const doctorData = {
-                pk: doctor.getPk(),
-                name: doctor.name,
-                unit: doctor.unit.pk
-            }
-            data.push(doctorData);
-        }
-
-        return data;
+        return appData.doctors.map(doctor => ({
+            pk: doctor.getPk(),
+            name: doctor.getName(),
+            preferences: {
+                exceptions: doctor.getExceptions(),
+                requested_days: doctor.getPreferredDays(),
+                preferred_weekdays: doctor.getPreferredWeekdays(),
+                preferred_positions: doctor.getPreferredPositions(),
+                maximum_accepted_duties: doctor.getMaxNumberOfDuties(),
+            },
+            next_month_duties: doctor.nextMonthDuties.map(duty => duty.day.number),
+            last_month_duties: doctor.prevMonthDuties.map(duty => duty.day.number),
+        }))
     }
 
     const dispatchDuties = (duties) => {
@@ -631,9 +591,60 @@ export default function DutiesSetter() {
     }
 
     const updateDoctor = async (d) => {
-        const data = {...d};
         // Get doctor
-        const doctor = appData.doctors.find(doc => doc.pk === data.pk);
+        const doctor = appData.doctors.find(doc => doc.pk === d.pk);
+        const data = updateDoctorInstanceAndSyncData(d, doctor);
+
+        // Update database.
+        try {
+            const settingsPk = doctor.getSettingsPk();
+            const month = appData.monthlyDuties.month;
+            const year = appData.monthlyDuties.year;
+            const payload = {
+                doctor: doctor.getPk(),
+                monthly_duties: appData.monthlyDuties.getPk(),
+                strain: doctor.getStrain(),
+                max_number_of_duties: data.maxDuties,
+                exceptions: data.exceptions.join(' '),
+                preferred_days: data.preferredDays.join(' '),
+                preferred_weekdays: data.preferredWeekdays.join(' '),
+                preferred_positions: data.preferredPositions.join(' '),
+                locked: data.locked,
+            };
+            if (settingsPk === null) {
+                // Create settings in database with current data.
+                const url = (`/unit/${appData.unit.pk}/duties/${year}/${month}`+
+                `/settings/`);
+                const response = await axiosInstance.post(url, payload);
+                // Update settings pk in doctor instance to enable updates.
+                const pk = response.data.pk;
+                doctor.setSettingsPk(pk);
+            } else {
+                // Update settings in database.
+                const url = (`/unit/${appData.unit.pk}/duties/${year}/${month}`+
+                `/settings/${doctor.getSettingsPk()}/`);
+                payload.pk = settingsPk;
+                await axiosInstance.put(url, payload);
+            }
+            // Update preferences.
+            appData.monthlyDuties.updatePreferences();
+            // Refresh.
+            refreshState();
+        } catch (error) {
+            console.log(error);
+            const generalError = ("Błąd aktualizacji bazy danych. Zmienione dane " +
+                "nie zostały zachowane na serwerze i nie będą dostępne po " +
+                "odświeżeniu strony.");
+            const header = 'Błąd przesyłania danych';
+            const variant = 'danger';
+            showAlert(generalError, header, variant);
+            return false;
+        }
+        return doctor;
+    }
+
+    const updateDoctorInstanceAndSyncData = (d, doctor) => {
+        const data = {...d};
 
         // Update instance and sync data.
         'maxDuties' in data ? 
@@ -655,61 +666,7 @@ export default function DutiesSetter() {
             data.locked && doctor.lockPreferences() :
             data.locked = doctor.isLocked();
 
-        // Update database.
-        try {
-            const settingsPk = doctor.getSettingsPk();
-            const month = appData.monthlyDuties.month;
-            const year = appData.monthlyDuties.year;
-            if (settingsPk === null) {
-                // Create settings in database with current data.
-                const url = (`/unit/${appData.unit.pk}/duties/${year}/${month}`+
-                `/settings/`);
-                const response = await axiosInstance.post(url, {
-                    doctor: doctor.getPk(),
-                    monthly_duties: appData.monthlyDuties.getPk(),
-                    strain: doctor.getStrain(),
-                    max_number_of_duties: data.maxDuties,
-                    exceptions: data.exceptions.join(' '),
-                    preferred_days: data.preferredDays.join(' '),
-                    preferred_weekdays: data.preferredWeekdays.join(' '),
-                    preferred_positions: data.preferredPositions.join(' '),
-                    locked: data.locked,
-                });
-                // Update settings pk in doctor instance to enable updates.
-                const pk = response.data.pk;
-                doctor.setSettingsPk(pk);
-            } else {
-                // Update settings in database.
-                const url = (`/unit/${appData.unit.pk}/duties/${year}/${month}`+
-                `/settings/${doctor.getSettingsPk()}/`);
-                await axiosInstance.put(url, {
-                    pk: doctor.getSettingsPk(),
-                    doctor: doctor.getPk(),
-                    monthly_duties: appData.monthlyDuties.getPk(),
-                    strain: doctor.getStrain(),
-                    max_number_of_duties: data.maxDuties,
-                    exceptions: data.exceptions.join(' '),
-                    preferred_days: data.preferredDays.join(' '),
-                    preferred_weekdays: data.preferredWeekdays.join(' '),
-                    preferred_positions: data.preferredPositions.join(' '),
-                    locked: data.locked,
-                });
-            }
-            // Update preferences.
-            appData.monthlyDuties.updatePreferences();
-            // Refresh.
-            refreshState();
-        } catch (error) {
-            console.log(error);
-            const generalError = ("Błąd aktualizacji bazy danych. Zmienione dane " +
-                "nie zostały zachowane na serwerze i nie będą dostępne po " +
-                "odświeżeniu strony.");
-            const header = 'Błąd przesyłania danych';
-            const variant = 'danger';
-            showAlert(generalError, header, variant);
-            return false;
-        }
-        return doctor;
+        return data
     }
 
     const createSettings = async (doctor) => {
@@ -927,7 +884,7 @@ export default function DutiesSetter() {
         showSpinner(['Zapisywanie...', 'Jeszcze chwilę...']);
         const month = appData.monthlyDuties.month;
         const year = appData.monthlyDuties.year;
-        const data = serializeMonthlyDuties();
+        const data = getSaveSchedulePayload();
 
         try {
             const url = `/unit/${appData.unit.pk}/duties/${year}/${month}/`;
@@ -945,6 +902,35 @@ export default function DutiesSetter() {
             hideSpinner();
         }
     }
+
+    const getSaveSchedulePayload = () => {
+        const month = appData.monthlyDuties.month;
+        const year = appData.monthlyDuties.year;
+        const data = {
+            pk: appData.monthlyDuties.getPk(),
+            monthandyear: `${month}/${year}`
+        }
+        if (appData.doctors.length) {
+            data.doctor_data = appData.doctors.map(doctor => ({
+                pk: doctor.getSettingsPk(),
+                doctor: doctor.getPk(),
+                strain: doctor.getStrain(),
+                max_number_of_duties: doctor.getMaxNumberOfDuties(),
+                exceptions: doctor.getExceptions().join(' '),
+                preferred_days: doctor.getPreferredDays().join(' '),
+                preferred_weekdays: doctor.getPreferredWeekdays().join(' '),
+                preferred_positions: doctor.getPreferredPositions().join(' '),
+                locked: doctor.isLocked()
+            }));
+        }
+        const duties = serializeDuties();
+        if (duties.length) {
+            data.duties = duties;
+        }
+
+        return data;
+    }
+
 
     const clearDuties = () => {
         setPendingDecision({clearDuties: true});

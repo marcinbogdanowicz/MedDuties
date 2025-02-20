@@ -6768,7 +6768,7 @@ eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpac
 /******/ 		// This function allow to reference async chunks
 /******/ 		__webpack_require__.u = (chunkId) => {
 /******/ 			// return url for filenames based on template
-/******/ 			return "" + chunkId + "." + {"frontend_components_ColumnLayout_js-frontend_components_algorithm_utils_js":"167538096bc88dba0f97","duties":"c66ce6c3d06932b727b8","vendors":"2d39f2d65e779e8e1767","dutySetter":"3dd495eac5ff70be4113","doctors":"8dda78ba3492ba7a7e3b","statistics":"866840ff93ea56f0a382","sitePolicy":"2fa69108d8fd1637cf9a","help":"fa31315ae9aec7fa8abd"}[chunkId] + ".js";
+/******/ 			return "" + chunkId + "." + {"frontend_components_ColumnLayout_js-frontend_components_algorithm_utils_js":"167538096bc88dba0f97","duties":"c66ce6c3d06932b727b8","vendors":"2d39f2d65e779e8e1767","dutySetter":"3adcc05bd1d8f1640763","doctors":"8dda78ba3492ba7a7e3b","statistics":"866840ff93ea56f0a382","sitePolicy":"2fa69108d8fd1637cf9a","help":"fa31315ae9aec7fa8abd"}[chunkId] + ".js";
 /******/ 		};
 /******/ 	})();
 /******/ 	
