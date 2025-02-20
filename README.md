@@ -19,10 +19,16 @@ Running the project requires docker and docker compose.
 To run the project, clone this repo and run the following script:
 
  ```
- ./run_project.sh
- ``` 
+ ./run_project.sh --reset
+ ```
+
+ This will clone the nested [repo](https://github.com/marcinbogdanowicz/MedDutiesRevisited) with algorithm microservice and make migrations.
  
- The algorithm code will be cloned from its repo by the script. The app will be available at `http://127.0.0.1:8000`.
+ The app will be available at `http://127.0.0.1:8000`.
+
+ Other convenience scripts:
+ - `./reset.sh` - recreates an empty database
+ - `./fetch_algorithm.sh` - refetches algorithm repo
 
 ## Technologies
 

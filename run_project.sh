@@ -1,12 +1,13 @@
 #!/usr/bin/bash
 
 ALGORITHM_DIR="./algorithm"
-REFRESH_ALGORITHM=0
+RESET=0
+
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        --refresh)
-            REFRESH_ALGORITHM=1
+        --reset)
+            RESET=1
             shift
             ;;
         *)
@@ -15,9 +16,14 @@ while [ $# -gt 0 ]; do
     esac
 done
 
-if [ ! -d "$ALGORITHM_DIR" ] || [ -z "$(ls $ALGORITHM_DIR)" ] || [ "$REFRESH_ALGORITHM" == 1 ]; then
+# Clone algorithm repo if missing
+if [ ! -d "$ALGORITHM_DIR" ] || [ -z "$(ls $ALGORITHM_DIR)" ] ; then
     source fetch_algorithm.sh
-    docker compose up -d --build
-else
-    docker compose up -d
+    docker compose build
 fi
+
+if [ "$RESET" == 1 ]; then
+    source reset.sh
+fi
+
+docker compose up -d
