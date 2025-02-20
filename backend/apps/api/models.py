@@ -100,21 +100,19 @@ class MonthlyDuties(models.Model):
 
 
 class Duty(models.Model):
+    monthly_duties = models.ForeignKey('MonthlyDuties', on_delete=models.CASCADE, related_name='duties')
+    doctor = models.ForeignKey('Doctor', on_delete=models.SET_NULL, related_name='duties', blank=True, null=True)
     day = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(31)])
-    weekday = models.PositiveIntegerField(validators=[MaxValueValidator(6)])
-    week = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(7)], default=1)
     position = models.PositiveIntegerField(validators=[MinValueValidator(1), MaxValueValidator(3)])
     strain_points = models.PositiveIntegerField()
-    doctor = models.ForeignKey('Doctor', on_delete=models.SET_NULL, related_name='duties', blank=True, null=True)
-    monthly_duties = models.ForeignKey('MonthlyDuties', on_delete=models.CASCADE, related_name='duties')
     owner = models.ForeignKey('User', on_delete=models.CASCADE, related_name='owned_duties')
-    user_set = models.BooleanField(default=False)
+    set_by_user = models.BooleanField(default=False)
 
     def __str__(self):
         return (
             f'{self.doctor} on {self.day}/'
-            + f'{self.monthly_duties.monthandyear[0]}/'
-            + f'{self.monthly_duties.monthandyear[1]}, pos. {self.position}'
+            f'{self.monthly_duties.monthandyear[0]}/'
+            f'{self.monthly_duties.monthandyear[1]}, pos. {self.position}'
         )
 
     class Meta:

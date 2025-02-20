@@ -43,15 +43,15 @@ class DoctorSerializer(serializers.Serializer):
 
 
 class DutySerializer(serializers.Serializer):
-    pk = serializers.IntegerField(min_value=1, required=False, allow_null=True)
-    doctor_pk = serializers.IntegerField(min_value=1)
+    pk = serializers.IntegerField(min_value=1, allow_null=True)
+    doctor = serializers.IntegerField(min_value=1, allow_null=True)
     day = DayNumberField()
     position = PositionField()
     strain_points = serializers.IntegerField(min_value=0)
     set_by_user = serializers.BooleanField(default=False)
 
     class Meta:
-        fields = ['pk', 'doctor_pk', 'day', 'position', 'strain_points', 'set_by_user']
+        fields = ['pk', 'doctor', 'day', 'position', 'strain_points', 'set_by_user']
 
 
 class SetDutiesInputSerializer(serializers.Serializer):

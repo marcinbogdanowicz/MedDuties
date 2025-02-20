@@ -159,7 +159,7 @@ export default function DutiesSetter() {
                 doctors.find(doctor => doctor.pk === duty.doctor) :
                 null;
             const day = monthlyDuties.getDays().find(day => day.number === duty.day);
-            return new Duty(day, doctor, duty.position, duty.strain_points, duty.pk, duty.user_set);
+            return new Duty(day, doctor, duty.position, duty.strain_points, duty.pk, duty.set_by_user);
         });
         monthlyDuties.addDuties(duties);
 
@@ -189,7 +189,7 @@ export default function DutiesSetter() {
                     duty.position, 
                     duty.strain_points, 
                     duty.pk, 
-                    duty.user_set
+                    duty.set_by_user
                 );
             })
         );
@@ -216,7 +216,7 @@ export default function DutiesSetter() {
                     duty.position, 
                     duty.strain_points, 
                     duty.pk, 
-                    duty.user_set
+                    duty.set_by_user
                 );
             })
         );
@@ -225,6 +225,8 @@ export default function DutiesSetter() {
         // Create first preferences object.
         monthlyDuties.updatePreferences();
 
+        console.log(monthlyDuties.getDuties()); // TODO remove
+
         // Add all the above to state.
         setAppData({
             unit: unit,
@@ -232,10 +234,6 @@ export default function DutiesSetter() {
             inactiveDoctors: inactiveDoctors,
             monthlyDuties: monthlyDuties,
         });
-
-        // Initialize first history state.
-        //const serializedDuties = serializeDuties(duties);
-        //saveDutiesHistory(serializedDuties);
     }, []);
 
     const setDuties = async () => {
@@ -260,8 +258,11 @@ export default function DutiesSetter() {
         // Send data to worker (it will trigger setting duties).
         try {
             let serializedData = getDutySettingPayload();
+            console.log('Algorithm payload', serializedData); // TODO remove
             const response = await axiosInstance.post('/set_duties/', serializedData);
             const data = response.data;
+
+            console.log('Algorithm response', data); // TODO remove
 
             let logContent = null;
 
@@ -286,19 +287,22 @@ export default function DutiesSetter() {
                 appData.monthlyDuties.clearDuties();
 
                 // Update duties in monthly duties.
+                dispatchDuties(data.duties);
+                console.log('Dispathed data', appData.monthlyDuties.getDuties()); // TODO remove
+                /*
                 for (const dutyData of data.duties) {
                     const day = appData.monthlyDuties.getDay(dutyData.day);
                     let doctor = (
-                        appData.doctors.find(doc => doc.pk === dutyData.doctor_pk) 
+                        appData.doctors.find(doc => doc.pk === dutyData.doctor) 
                         || appData.inactiveDoctors.find(
-                        doc => doc.pk === dutyData.doctor_pk));
+                        doc => doc.pk === dutyData.doctor));
                     if (!doctor) {
                         doctor = null;
                     }
                     const duty = new Duty(day, doctor, dutyData.position, 
                         dutyData.strain_points, 0, dutyData.set_by_user);
                     appData.monthlyDuties.setDuty(duty);
-                }
+                }*/
 
                 // Update preferences.
                 appData.monthlyDuties.updatePreferences();
@@ -334,43 +338,26 @@ export default function DutiesSetter() {
             locale: 'pl'
         }
 
-        data.duties = data.duties.filter(duty => duty.user_set === true);
-        data.duties.forEach(duty => {
-            let doctor = duty.doctor;
-            duty.doctor_pk = doctor;
-            delete duty.doctor;
-            delete duty.week;
-            delete duty.weekday;
-        });
-
         return data;
     }
 
-    const serializeDuties = (d=null) => {
-        const duties = d || (
+    const serializeDuties = () => {
+        const duties = (
             [...appData.monthlyDuties.getDuties().values()]
             .map(item => Object.values(item))
             .flat()
         );
-        if (duties.length) {
-            return duties.map(duty => {
-                const mapped = {
-                    day: duty.getDay().number,
-                    weekday: duty.getDay().weekday,
-                    week: duty.getDay().week,
-                    position: duty.getPosition(),
-                    strain_points: duty.getStrain(),
-                    user_set: duty.isUserSet()
-                };
-                const pk = duty.getPk();
-                const doctor = duty.getDoctor();
-                pk && (mapped['pk'] = pk);
-                doctor ? mapped['doctor'] = doctor.getPk() : mapped['doctor'] = null;
-                return mapped;
-            });
-        } else {
-            return [];
-        }
+        return duties.map(duty => {
+            const doctor = duty.getDoctor();
+            return {
+                pk: duty.getPk(),
+                doctor: doctor ? doctor.pk : null,
+                day: duty.getDay().number,
+                position: duty.getPosition(),
+                strain_points: duty.getStrain(),
+                set_by_user: duty.isSetByUser()
+            };
+        });
     }
 
     const serializeDoctors = () => {
@@ -391,11 +378,13 @@ export default function DutiesSetter() {
 
     const dispatchDuties = (duties) => {
         const result = duties.map(duty => {
-            const doctor = duty.doctor ? 
-                appData.doctors.find(doctor => doctor.pk === duty.doctor) :
-                null;
+            const doctor = (
+                appData.doctors.find(doctor => doctor.pk === duty.doctor) 
+                || appData.inactiveDoctors.find(doctor => doctor.pk === duty.doctor) 
+                || null
+            );
             const day = appData.monthlyDuties.getDays().find(day => day.number === duty.day);
-            return new Duty(day, doctor, duty.position, duty.strain_points, duty.pk, duty.user_set);
+            return new Duty(day, doctor, duty.position, duty.strain_points, duty.pk, duty.set_by_user);
         });
         appData.monthlyDuties.addDuties(result);
     }
@@ -410,8 +399,9 @@ export default function DutiesSetter() {
         updateStatistics();
     }
 
-    const saveDutiesHistory = (duties=serializeDuties()) => {
+    const saveDutiesHistory = () => {
         const newHistory = [...dutiesHistory.history.slice(0, dutiesHistory.position)];
+        const duties = serializeDuties();
         newHistory.push(duties);
         if (newHistory.length > 6) {
             newHistory.shift();
@@ -427,7 +417,8 @@ export default function DutiesSetter() {
         let newPosition = dutiesHistory.position - 1;
         const newHistory = [...dutiesHistory.history];
         if (dutiesHistory.position === dutiesHistory.history.length) {
-            newHistory.push(serializeDuties());
+            const currentDuties = serializeDuties();
+            newHistory.push(currentDuties);
             newHistory.length > 7 && newHistory.shift();
         }
         dispatchDuties(dutiesHistory.history[newPosition]);
@@ -908,7 +899,8 @@ export default function DutiesSetter() {
         const year = appData.monthlyDuties.year;
         const data = {
             pk: appData.monthlyDuties.getPk(),
-            monthandyear: `${month}/${year}`
+            monthandyear: `${month}/${year}`,
+            duties: serializeDuties()
         }
         if (appData.doctors.length) {
             data.doctor_data = appData.doctors.map(doctor => ({
@@ -922,10 +914,6 @@ export default function DutiesSetter() {
                 preferred_positions: doctor.getPreferredPositions().join(' '),
                 locked: doctor.isLocked()
             }));
-        }
-        const duties = serializeDuties();
-        if (duties.length) {
-            data.duties = duties;
         }
 
         return data;

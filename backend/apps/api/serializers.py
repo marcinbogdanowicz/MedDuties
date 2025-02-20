@@ -196,7 +196,7 @@ class DutySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Duty
-        fields = ('pk', 'day', 'weekday', 'week', 'position', 'strain_points', 'doctor', 'monthly_duties', 'user_set')
+        fields = ('pk', 'day', 'position', 'strain_points', 'doctor', 'monthly_duties', 'set_by_user')
 
     def create(self, validated_data):
         # Set user as owner during creation.
@@ -215,19 +215,15 @@ class DutySerializer(serializers.ModelSerializer):
         if request:
 
             if not request.user.is_head_doctor:
-                raise exceptions.PermissionDenied(("Only head doctors can create or modify " + "duties."))
+                raise exceptions.PermissionDenied("Only head doctors can create or modify duties.")
 
             doctor = validated_data.get('doctor')
             if doctor is not None and doctor.owner != request.user:
-                raise exceptions.PermissionDenied(
-                    ("User cannot create nor modify duties " + "for doctor he does not own.")
-                )
+                raise exceptions.PermissionDenied("User cannot create nor modify duties for doctor he does not own.")
 
             monthly_duties = validated_data.get('monthly_duties')
             if monthly_duties is not None and monthly_duties.owner != request.user:
-                raise exceptions.PermissionDenied(
-                    ("User cannot create nor modify duties " + "for schedule he does not own.")
-                )
+                raise exceptions.PermissionDenied("User cannot create nor modify duties for schedule he does not own.")
 
         return validated_data
 
@@ -239,14 +235,12 @@ class DutyNestedSerializer(DutySerializer):
         fields = (
             'pk',
             'day',
-            'weekday',
-            'week',
             'position',
             'doctor',
             'strain_points',
             'monthly_duties',
             'owner',
-            'user_set',
+            'set_by_user',
         )
         extra_kwargs = {
             'pk': {'read_only': False, 'required': False},
@@ -326,7 +320,7 @@ class MonthlyDutiesSerializer(serializers.ModelSerializer):
         {"doctor":2, ...}
     ],
     "duties":[
-        {"day":15,"position":1,"doctor":1,"user_set":false},
+        {"day":15,"position":1,"doctor":1,"set_by_user":false},
         {"day":12, ...},
     ]}
     """

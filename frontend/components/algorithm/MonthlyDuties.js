@@ -150,7 +150,7 @@ class MonthlyDuties {
     _removeDoctorDuties(doctor, clearUserSetToo=false) {
         for (const day of this.days) {
             for (const duty of Object.values(this.duties.get(day))) {
-                if ((!duty.isUserSet() || clearUserSetToo)
+                if ((!duty.isSetByUser() || clearUserSetToo)
                         && duty.getDoctor() === doctor) {
                     duty.setDoctor(null);
                     duty.userSet(false);
@@ -349,7 +349,7 @@ class MonthlyDuties {
             const positionsToAdd = [];
             this.dutyPositions.forEach(position => {
                 const duty = this.duties.get(day)[position];
-                if (duty.getDoctor() !== null && duty.isUserSet()) {
+                if (duty.getDoctor() !== null && duty.isSetByUser()) {
                     positionsToAdd.push(duty.getPosition());
                 }
             });
@@ -739,7 +739,7 @@ class MonthlyDuties {
                 const data = state.get(day)[position];
                 if (data.getDoctor() !== null) {
                     const duty = this.duties.get(day)[position];
-                    duty.isUserSet() && data.userSet(true);
+                    duty.isSetByUser() && data.userSet(true);
                     this.setDuty(data);
                 }
             }
@@ -1046,7 +1046,7 @@ class MonthlyDuties {
                 );
                 const iHaveDutyOnExcludedPosition = (
                     !preferredPositions.includes(duties[i].getPosition()));
-                const dutyIsUserSet = duties[i].isUserSet();
+                const dutyisSetByUser = duties[i].isSetByUser();
 
                 if (twoDutiesOnSameDay) {
                     errors.add(`${doctor.name} ma zaplanowanych wiele dyżurów ` +
@@ -1057,17 +1057,17 @@ class MonthlyDuties {
                         `następujące po sobie dni ${dates[i]} i ${dates[i] + 1}` +
                         `/${this.month}/${this.year}.`);
                 }
-                if (iHaveDutyOnExcludedDay && !dutyIsUserSet) {
+                if (iHaveDutyOnExcludedDay && !dutyisSetByUser) {
                     errors.add(`${doctor.name} ma zaplanowany dyżur w zastrzeżony ` +
                         `dzień ${dates[i]}/${this.month}/${this.year}.`);
                 }
-                if (iHaveDutyOnExcludedWeekday && !dutyIsUserSet) {
+                if (iHaveDutyOnExcludedWeekday && !dutyisSetByUser) {
                     errors.add(`${doctor.name} ma zaplanowany dyżur w ` +
                         `dzień tygodnia: ${WEEKDAY_NAMES[duties[i].getDay().weekday]}, `+
                         `który nie znajduje się na liście dni tygodnia, w które `+
                         `może brać dyżury.`);
                 }
-                if (iHaveDutyOnExcludedPosition && !dutyIsUserSet) {
+                if (iHaveDutyOnExcludedPosition && !dutyisSetByUser) {
                     errors.add(`${doctor.name} ma zaplanowany dyżur ${dates[i]}` +
                     `/${this.month}/${this.year} na pozycji ${duties[i].getPosition()}, `+
                     `która nie znajduje się na liście pozycji, na których ` +
