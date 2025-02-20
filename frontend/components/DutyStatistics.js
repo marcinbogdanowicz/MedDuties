@@ -20,7 +20,7 @@ export default function DutyStatistics(props) {
         ['3', 'Czw'],
         ['4', 'Pią'],
         ['5', 'Sob'],
-        ['6', 'Nie'],        
+        ['6', 'Nie'],
         ['strain', 'Obciążenie']
     ]);
 
@@ -28,7 +28,6 @@ export default function DutyStatistics(props) {
     const content = statistics ? 
         <StatisticsTable statistics={statistics} keys={keys} /> : 
         'Statystyki';
-    
 
     return <Offcanvas heading={heading} content={content} hide={hide} toggle={toggle} />;
 }

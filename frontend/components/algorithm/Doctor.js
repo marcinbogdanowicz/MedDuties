@@ -88,7 +88,6 @@ class Doctor {
         this.#month = month;
 
         // Methods.
-        this.setPk = this.setPk.bind(this);
         this.getPk = this.getPk.bind(this);
         this.setSettingsPk = this.setSettingsPk.bind(this);
         this.getSettingsPk = this.getSettingsPk.bind(this);
@@ -129,10 +128,6 @@ class Doctor {
 
         this._getPreviousMonthModfiers = this._getPreviousMonthModfiers.bind(this);
         this._getNextMonthModfiers = this._getNextMonthModfiers.bind(this);
-    }
-
-    setPk(pk) {
-        this.pk = pk;
     }
 
     getPk() {
